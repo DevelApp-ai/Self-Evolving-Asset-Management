@@ -1,27 +1,75 @@
-Yes, this methodology can absolutely be adapted to improve internal tools based on user feedback and questionnaires. In this scenario, the system effectively automates the role of a product owner. Instead of relying solely on compiler errors or automated UI tests for its "fitness score," the evolutionary algorithm incorporates qualitative metrics—such as user interaction history, ratings, and explicit questionnaire feedback—to guide the generative model in making precise, deterministic code modifications.  
-Here is a conceptual technical design specification for a Self-Evolving Asset Management System utilizing this methodology:
+# Self-Evolving Asset Management - Technical Design Specification
 
-### **1\. The Core Application Architecture (The Substrate)**
+## 1. Solution Goal
+Build a self-evolving Asset Management system that continuously improves workflows from user feedback while keeping core enterprise controls safe and auditable.
 
-The base Asset Management System is designed as a highly modular C\# ASP.NET Core application utilizing a plugin-based architecture. Critical enterprise components (such as the core SQL database tracking hardware/software assets and user authentication) remain static. However, the business logic, reporting dashboards, and specific user interface components are built as dynamic, isolated DLLs that can be loaded and unloaded at runtime using a collectible AssemblyLoadContext.
+## 2. Technology Direction
+- **Primary stack:** C# / .NET
+- **Application model:** **Blazor Web App hybrid** with:
+  - Blazor WebAssembly for rich client-side UX
+  - Blazor Server for interactive server-hosted features and operational control
+- **Database:** PostgreSQL
+- **Self-evolution package:** `DevelApp.SelfEvolvingFramework` (NuGet)
 
-### **2\. The "Product Owner" Feedback Loop (Fitness Evaluation)**
+## 3. High-Level Architecture
 
-* **Feedback Ingestion:** The application includes embedded mechanisms for users to rate features or submit requests (e.g., "The search function is too slow," or "I need to filter laptops by warranty expiration date").  
-* **Behavioral Telemetry:** The system actively monitors user interaction history and workflow completion times.  
-* **Translating Feedback to Fitness:** This qualitative data is programmatically converted into the genetic algorithm's fitness score. If a newly evolved feature solves the user's problem and receives high ratings, it survives. If it introduces bugs or poor usability, it receives a severe fitness penalty.
+### 3.1 Frontend (Blazor WASM + Server Hybrid)
+- Shared Razor components for asset screens, reporting views, and admin tools.
+- WASM mode for responsive user-facing interactions (search, filtering, dashboards).
+- Server mode for privileged operations (evolution orchestration, approvals, rollout control).
 
-### **3\. The Generative Mutation Engine (Microsoft Semantic Kernel)**
+### 3.2 Backend Services
+- ASP.NET Core backend exposing APIs for assets, lifecycle events, and feedback.
+- Domain modules for inventory, assignment, maintenance, and compliance.
+- Evolution orchestration service integrated via `DevelApp.SelfEvolvingFramework`.
 
-When the system identifies a feature request or a bottleneck, the GeneticSharp orchestrator triggers a mutation. The Microsoft Semantic Kernel prompts the LLM with the specific user feedback, the current C\# source code of the targeted plugin, and the system's operational constraints. The LLM acts as the developer, writing a modified C\# script designed to address the user's questionnaire feedback directly.
+### 3.3 Data Layer (PostgreSQL)
+- PostgreSQL as the authoritative transactional store.
+- Core tables: assets, categories, ownership, maintenance history, evolution candidates, rollout telemetry, and user feedback.
+- Migrations managed with EF Core.
 
-### **4\. Dynamic Compilation and Pre-Execution Guardrails**
+## 4. DevelApp.SelfEvolvingFramework Integration
 
-* **AST Security Check:** Before the new feature is compiled, a custom CSharpSyntaxWalker extracts the Abstract Syntax Tree (AST) of the LLM-generated code. This AST is evaluated against Open Policy Agent (OPA) Rego rules to ensure the LLM hasn't hallucinated destructive database commands (like dropping the asset tables) or unauthorized network calls.  
-* **Roslyn Compilation:** If the code is deemed structurally safe, the Roslyn compilation engine compiles the C\# string into an executable Microsoft Intermediate Language (MSIL) assembly in memory.
+### 4.1 Responsibilities
+`DevelApp.SelfEvolvingFramework` is used to:
+- Ingest questionnaire and telemetry feedback.
+- Produce candidate improvements for configurable parts of the system.
+- Evaluate candidates against policy and fitness rules.
+- Promote successful candidates through controlled rollout.
 
-### **5\. Seamless Deployment and Playwright Validation**
+### 4.2 Bounded Scope for Evolution
+Only designated extension points are evolvable:
+- Search and filtering strategies
+- Dashboard/report composition
+- Non-critical workflow suggestions
 
-* **Hot-Swapping and Dependency Injection:** The newly compiled assembly is loaded into an isolated AssemblyLoadContext, and its services are dynamically registered into the application's Dependency Injection container. This allows the asset management system to update its capabilities without requiring a server restart.  
-* **Automated Validation:** Before users see the change, Playwright launches a headless browser to programmatically navigate the new asset dashboard, verifying that the UI renders correctly and buttons respond without console errors.  
-* **A/B Testing (Evolutionary Selection):** The new feature is exposed to a small subset of users. The system asks them for feedback on the new change. If it succeeds, the variant permanently replaces the old module. If it fails, the system unloads the context, forces garbage collection to reclaim memory, and prompts the LLM to try a different structural approach based on the new critique.
+Non-evolvable core:
+- Authentication/authorization
+- Audit logging
+- Financial/compliance data integrity rules
+- Critical schema contracts
+
+## 5. Operational Flow
+1. Users submit explicit feedback and generate telemetry through normal usage.
+2. Feedback is normalized and stored in PostgreSQL.
+3. `DevelApp.SelfEvolvingFramework` generates candidate improvements for approved extension points.
+4. Candidates pass policy checks and automated validation.
+5. A staged rollout (internal users → pilot users → full users) is executed.
+6. Rollback is automatic on regression signals.
+
+## 6. Quality, Safety, and Governance
+- Strict policy checks before any candidate activation.
+- Full audit trail for generated candidates, approvals, deployments, and rollbacks.
+- Feature flags for safe rollout and quick disablement.
+- Human approval gates for high-impact changes.
+
+## 7. Testing Strategy
+- Unit tests for domain logic and evolution fitness calculations.
+- Integration tests near implementation for PostgreSQL persistence and framework integration boundaries.
+- UI tests for critical Blazor asset workflows.
+- Regression test gates required before promotion.
+
+## 8. Deployment Model
+- Containerized deployment for App + PostgreSQL.
+- Environment split: dev, staging, production.
+- Evolution capabilities enabled progressively per environment with stricter production controls.
