@@ -1,0 +1,46 @@
+name: Build and Test
+
+on:
+  pull_request:
+    branches:
+      - "**"
+  push:
+    branches:
+      - main
+
+jobs:
+  build-test:
+    name: Build and Test (${{ github.event_name == 'pull_request' && 'prerelease' || 'release' }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      PIPELINE_CHANNEL: ${{ github.event_name == 'pull_request' && 'prerelease' || 'release' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Show pipeline channel
+        run: echo "Running ${PIPELINE_CHANNEL} pipeline"
+
+      - name: Restore
+        if: ${{ hashFiles('**/*.sln', '**/*.csproj') != '' }}
+        run: dotnet restore
+
+      - name: Build
+        if: ${{ hashFiles('**/*.sln', '**/*.csproj') != '' }}
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        if: ${{ hashFiles('**/*Tests/*.csproj', '**/*Test/*.csproj', '**/*.Tests.csproj', '**/*.Test.csproj') != '' }}
+        run: dotnet test --configuration Release --no-build
+
+      - name: No .NET project found
+        if: ${{ hashFiles('**/*.sln', '**/*.csproj') == '' }}
+        run: echo "No .NET solution or project files found. Build/test steps skipped."
