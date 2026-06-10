@@ -76,7 +76,7 @@ Non-evolvable core:
 
 ## 9. Current Implementation Proximity Evaluation
 
-Estimated overall completion toward the target architecture: **~42%**.
+Estimated overall completion toward the target architecture: **~50%**.
 
 | Area | Status | Test Coverage |
 |---|---|---|
@@ -84,7 +84,7 @@ Estimated overall completion toward the target architecture: **~42%**.
 | Asset inventory create/read API | Partially implemented (in-memory) | Unit + integration-tested |
 | Asset ownership assignment API | Partially implemented (in-memory) | Unit + integration-tested |
 | PostgreSQL persistence and EF Core migrations | Not implemented | Not yet |
-| Feedback ingestion and telemetry pipeline | Not implemented | Not yet |
+| Feedback ingestion and telemetry pipeline | Partially implemented (in-memory feedback ingestion API) | Unit + integration-tested |
 | `DevelApp.SelfEvolvingFramework` runtime orchestration | Not implemented (package referenced, no flow integration yet) | Not yet |
 | Rollout governance and approval workflow | Not implemented | Not yet |
 

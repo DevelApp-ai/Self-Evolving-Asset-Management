@@ -19,6 +19,7 @@ builder.Services.AddSingleton<ArchitectureSpecificationService>();
 builder.Services.AddSingleton<AssetInventoryService>();
 builder.Services.AddSingleton<OpaGuidancePolicyService>();
 builder.Services.AddSingleton<AssetOwnershipService>();
+builder.Services.AddSingleton<FeedbackIngestionService>();
 
 var app = builder.Build();
 
@@ -93,6 +94,21 @@ app.MapPost("/api/assets/{id:int}/assignments", (int id, CreateAssetAssignmentRe
     {
         var created = ownershipService.Assign(id, request);
         return Results.Created($"/api/assets/{id}/assignments/{created.Id}", created);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/feedback", (FeedbackIngestionService service) => Results.Ok(service.GetAll()));
+
+app.MapPost("/api/feedback", (CreateFeedbackRequest request, FeedbackIngestionService service) =>
+{
+    try
+    {
+        var created = service.Create(request);
+        return Results.Created($"/api/feedback/{created.Id}", created);
     }
     catch (ArgumentException ex)
     {
