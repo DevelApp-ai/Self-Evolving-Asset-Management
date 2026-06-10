@@ -191,6 +191,24 @@ app.MapPost("/api/evolution/candidates/{id:int}/activate", (int id, EvolutionOrc
     }
 });
 
+app.MapPost("/api/evolution/candidates/{id:int}/rollback", (int id, EvolutionOrchestrationService evolutionService) =>
+{
+    if (evolutionService.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    try
+    {
+        var rolledBack = evolutionService.Rollback(id);
+        return Results.Ok(rolledBack);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
+    }
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()

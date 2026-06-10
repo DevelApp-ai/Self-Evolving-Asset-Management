@@ -68,4 +68,15 @@ public sealed class EvolutionOrchestrationService
 
         return UpdateStatus(id, "Active");
     }
+
+    public EvolutionCandidateRecord Rollback(int id)
+    {
+        var candidate = GetById(id) ?? throw new InvalidOperationException($"Candidate '{id}' was not found.");
+        if (candidate.Status != "Active")
+        {
+            throw new InvalidOperationException($"Candidate '{id}' must be active before rollback.");
+        }
+
+        return UpdateStatus(id, "RolledBack");
+    }
 }

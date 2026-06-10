@@ -51,6 +51,44 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task RollbackCandidate_WhenActive_ReturnsOkAndStatusBecomesRolledBack()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateActiveCandidateAsync(client);
+
+        var rollbackResponse = await client.PostAsync($"/api/evolution/candidates/{candidateId}/rollback", content: null);
+        Assert.Equal(HttpStatusCode.OK, rollbackResponse.StatusCode);
+
+        var listResponse = await client.GetAsync("/api/evolution/candidates");
+        listResponse.EnsureSuccessStatusCode();
+
+        var candidates = await listResponse.Content.ReadFromJsonAsync<List<CandidateResponse>>();
+        Assert.NotNull(candidates);
+        Assert.Equal("RolledBack", candidates!.Single(x => x.Id == candidateId).Status);
+    }
+
+    [Fact]
+    public async Task RollbackCandidate_WhenNotActive_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateApprovedCandidateAsync(client);
+
+        var response = await client.PostAsync($"/api/evolution/candidates/{candidateId}/rollback", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RollbackCandidate_WhenMissing_ReturnsNotFound()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsync("/api/evolution/candidates/9999/rollback", content: null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private static async Task<int> CreateApprovedCandidateAsync(HttpClient client)
     {
         var candidateId = await CreateCandidateAsync(client);
@@ -61,6 +99,14 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
         });
 
         approvalResponse.EnsureSuccessStatusCode();
+        return candidateId;
+    }
+
+    private static async Task<int> CreateActiveCandidateAsync(HttpClient client)
+    {
+        var candidateId = await CreateApprovedCandidateAsync(client);
+        var activateResponse = await client.PostAsync($"/api/evolution/candidates/{candidateId}/activate", content: null);
+        activateResponse.EnsureSuccessStatusCode();
         return candidateId;
     }
 

@@ -69,4 +69,31 @@ public class EvolutionOrchestrationServiceTests
 
         Assert.Throws<InvalidOperationException>(action);
     }
+
+    [Fact]
+    public void Rollback_WhenActive_TransitionsToRolledBack()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(6, "Ops", "Rollout", "Rollback on regression", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.Activate(created.Id);
+
+        var rolledBack = service.Rollback(created.Id);
+
+        Assert.Equal("RolledBack", rolledBack.Status);
+        Assert.Equal("RolledBack", service.GetById(created.Id)?.Status);
+    }
+
+    [Fact]
+    public void Rollback_WhenNotActive_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(7, "Ops", "Rollout", "Cannot rollback proposed", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+
+        var action = () => service.Rollback(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
 }
