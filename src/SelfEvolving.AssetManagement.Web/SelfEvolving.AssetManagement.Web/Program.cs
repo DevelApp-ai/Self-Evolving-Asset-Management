@@ -17,6 +17,7 @@ builder.Services
 
 builder.Services.AddSingleton<ArchitectureSpecificationService>();
 builder.Services.AddSingleton<AssetInventoryService>();
+builder.Services.AddSingleton<OpaGuidancePolicyService>();
 
 var app = builder.Build();
 
@@ -47,8 +48,14 @@ app.MapGet("/api/assets/{id:int}", (int id, AssetInventoryService service) =>
     return asset is null ? Results.NotFound() : Results.Ok(asset);
 });
 
-app.MapPost("/api/assets", (CreateAssetRequest request, AssetInventoryService service) =>
+app.MapPost("/api/assets", (CreateAssetRequest request, AssetInventoryService service, OpaGuidancePolicyService policyService) =>
 {
+    var policyDecision = policyService.EvaluateAssetCreate(request);
+    if (!policyDecision.Allowed)
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    }
+
     try
     {
         var created = service.Create(request);

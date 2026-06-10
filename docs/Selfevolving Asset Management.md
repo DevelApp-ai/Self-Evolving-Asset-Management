@@ -73,3 +73,27 @@ Non-evolvable core:
 - Containerized deployment for App + PostgreSQL.
 - Environment split: dev, staging, production.
 - Evolution capabilities enabled progressively per environment with stricter production controls.
+
+## 9. Current Implementation Proximity Evaluation
+
+Estimated overall completion toward the target architecture: **~35%**.
+
+| Area | Status | Test Coverage |
+|---|---|---|
+| Architecture baseline and blueprint API | Implemented | Integration-tested |
+| Asset inventory create/read API | Partially implemented (in-memory) | Unit + integration-tested |
+| PostgreSQL persistence and EF Core migrations | Not implemented | Not yet |
+| Feedback ingestion and telemetry pipeline | Not implemented | Not yet |
+| `DevelApp.SelfEvolvingFramework` runtime orchestration | Not implemented (package referenced, no flow integration yet) | Not yet |
+| Rollout governance and approval workflow | Not implemented | Not yet |
+
+### OPA Guidance (Current + Next)
+- Current implementation applies **OPA-style policy guidance** at asset create time (explicit allow/deny decision before persistence).
+- Current policy checks:
+  - `assetTag` must start with `A-`
+  - `name` length must be <= 100
+  - `category` must be one of `Hardware`, `Software`, `Devices`, `General`
+- Next step to reach full OPA alignment:
+  1. Externalize policies to Rego bundles and evaluate through an OPA sidecar/service.
+  2. Add policy decision logging/audit records in PostgreSQL.
+  3. Add integration tests that validate policy outcomes against loaded Rego policies.

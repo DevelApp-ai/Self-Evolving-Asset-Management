@@ -64,6 +64,21 @@ public class AssetEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task CreateAsset_WhenPolicyDenied_ReturnsForbidden()
+    {
+        using var client = _factory.CreateClient();
+
+        var deniedResponse = await client.PostAsJsonAsync("/api/assets", new
+        {
+            assetTag = "X-999",
+            name = "Unmanaged",
+            category = "Hardware"
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, deniedResponse.StatusCode);
+    }
+
     private sealed record AssetResponse(
         int Id,
         string AssetTag,
