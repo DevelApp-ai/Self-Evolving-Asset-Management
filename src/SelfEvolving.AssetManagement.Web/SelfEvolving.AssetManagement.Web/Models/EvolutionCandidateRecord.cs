@@ -6,4 +6,5 @@ public sealed record EvolutionCandidateRecord(
     string Title,
     string Summary,
     string Status,
+    string? RolloutStage,
     DateTime CreatedUtc);

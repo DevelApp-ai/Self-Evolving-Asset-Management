@@ -55,6 +55,7 @@ public class EvolutionOrchestrationServiceTests
         var activated = service.Activate(created.Id);
 
         Assert.Equal("Active", activated.Status);
+        Assert.Equal("Internal", activated.RolloutStage);
         Assert.Equal("Active", service.GetById(created.Id)?.Status);
     }
 
@@ -93,6 +94,63 @@ public class EvolutionOrchestrationServiceTests
         var created = service.CreateFromFeedback(feedback);
 
         var action = () => service.Rollback(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
+
+    [Fact]
+    public void PromoteRollout_WhenActive_TransitionsFromInternalToPilot()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(8, "Ops", "Rollout", "Promote to pilot", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.Activate(created.Id);
+
+        var promoted = service.PromoteRollout(created.Id);
+
+        Assert.Equal("Pilot", promoted.RolloutStage);
+    }
+
+    [Fact]
+    public void PromoteRollout_WhenPilot_TransitionsToFull()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(9, "Ops", "Rollout", "Promote to full", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.Activate(created.Id);
+        service.PromoteRollout(created.Id);
+
+        var promoted = service.PromoteRollout(created.Id);
+
+        Assert.Equal("Full", promoted.RolloutStage);
+    }
+
+    [Fact]
+    public void PromoteRollout_WhenNotActive_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(10, "Ops", "Rollout", "Must activate first", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+
+        var action = () => service.PromoteRollout(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
+
+    [Fact]
+    public void PromoteRollout_WhenAlreadyFull_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(11, "Ops", "Rollout", "No more promotions after full", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.Activate(created.Id);
+        service.PromoteRollout(created.Id);
+        service.PromoteRollout(created.Id);
+
+        var action = () => service.PromoteRollout(created.Id);
 
         Assert.Throws<InvalidOperationException>(action);
     }

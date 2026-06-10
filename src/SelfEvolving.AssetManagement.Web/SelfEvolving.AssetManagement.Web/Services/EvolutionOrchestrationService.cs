@@ -6,6 +6,7 @@ namespace SelfEvolving.AssetManagement.Web.Services;
 
 public sealed class EvolutionOrchestrationService
 {
+    private static readonly string[] RolloutStages = ["Internal", "Pilot", "Full"];
     private readonly ConcurrentDictionary<int, EvolutionCandidateRecord> _candidatesById = new();
     private readonly ConcurrentDictionary<int, int> _candidateIdByFeedbackId = new();
     private int _nextId;
@@ -35,6 +36,7 @@ public sealed class EvolutionOrchestrationService
             title,
             summary,
             Status: "Proposed",
+            RolloutStage: null,
             DateTime.UtcNow);
 
         _candidatesById[id] = created;
@@ -66,7 +68,9 @@ public sealed class EvolutionOrchestrationService
             throw new InvalidOperationException($"Candidate '{id}' must be approved before activation.");
         }
 
-        return UpdateStatus(id, "Active");
+        var updated = candidate with { Status = "Active", RolloutStage = RolloutStages[0] };
+        _candidatesById[id] = updated;
+        return updated;
     }
 
     public EvolutionCandidateRecord Rollback(int id)
@@ -78,5 +82,31 @@ public sealed class EvolutionOrchestrationService
         }
 
         return UpdateStatus(id, "RolledBack");
+    }
+
+    public EvolutionCandidateRecord PromoteRollout(int id)
+    {
+        var candidate = GetById(id) ?? throw new InvalidOperationException($"Candidate '{id}' was not found.");
+        if (candidate.Status != "Active")
+        {
+            throw new InvalidOperationException($"Candidate '{id}' must be active before rollout promotion.");
+        }
+
+        var currentStage = candidate.RolloutStage ?? RolloutStages[0];
+        var currentIndex = Array.IndexOf(RolloutStages, currentStage);
+        if (currentIndex < 0)
+        {
+            throw new InvalidOperationException($"Candidate '{id}' has an unknown rollout stage '{currentStage}'.");
+        }
+
+        if (currentIndex >= RolloutStages.Length - 1)
+        {
+            throw new InvalidOperationException($"Candidate '{id}' is already at the final rollout stage.");
+        }
+
+        var nextStage = RolloutStages[currentIndex + 1];
+        var updated = candidate with { RolloutStage = nextStage };
+        _candidatesById[id] = updated;
+        return updated;
     }
 }

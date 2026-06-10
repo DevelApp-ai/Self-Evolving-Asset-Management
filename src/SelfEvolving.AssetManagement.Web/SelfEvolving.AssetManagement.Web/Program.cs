@@ -204,6 +204,25 @@ app.MapPost("/api/evolution/candidates/{id:int}/activate", (int id, EvolutionOrc
     }
 });
 
+app.MapPost("/api/evolution/candidates/{id:int}/rollout/promote", (int id, EvolutionOrchestrationService evolutionService, EvolutionLifecycleService lifecycleService) =>
+{
+    if (evolutionService.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    try
+    {
+        var promoted = evolutionService.PromoteRollout(id);
+        lifecycleService.Record(id, $"PromotedTo{promoted.RolloutStage}", "system", null);
+        return Results.Ok(promoted);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
+    }
+});
+
 app.MapPost("/api/evolution/candidates/{id:int}/rollback", (int id, EvolutionOrchestrationService evolutionService, EvolutionLifecycleService lifecycleService) =>
 {
     if (evolutionService.GetById(id) is null)

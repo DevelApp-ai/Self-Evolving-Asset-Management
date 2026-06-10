@@ -27,7 +27,9 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
 
         var candidates = await listResponse.Content.ReadFromJsonAsync<List<CandidateResponse>>();
         Assert.NotNull(candidates);
-        Assert.Equal("Active", candidates!.Single(x => x.Id == candidateId).Status);
+        var candidate = candidates!.Single(x => x.Id == candidateId);
+        Assert.Equal("Active", candidate.Status);
+        Assert.Equal("Internal", candidate.RolloutStage);
     }
 
     [Fact]
@@ -89,6 +91,50 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PromoteRollout_WhenActive_ReturnsOkAndStageAdvances()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateActiveCandidateAsync(client);
+
+        var promoteResponse = await client.PostAsync($"/api/evolution/candidates/{candidateId}/rollout/promote", content: null);
+        Assert.Equal(HttpStatusCode.OK, promoteResponse.StatusCode);
+
+        var listResponse = await client.GetAsync("/api/evolution/candidates");
+        listResponse.EnsureSuccessStatusCode();
+
+        var candidates = await listResponse.Content.ReadFromJsonAsync<List<CandidateResponse>>();
+        Assert.NotNull(candidates);
+        Assert.Equal("Pilot", candidates!.Single(x => x.Id == candidateId).RolloutStage);
+    }
+
+    [Fact]
+    public async Task PromoteRollout_WhenNotActive_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateApprovedCandidateAsync(client);
+
+        var response = await client.PostAsync($"/api/evolution/candidates/{candidateId}/rollout/promote", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PromoteRollout_WhenAlreadyFull_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateActiveCandidateAsync(client);
+
+        var firstPromotion = await client.PostAsync($"/api/evolution/candidates/{candidateId}/rollout/promote", content: null);
+        Assert.Equal(HttpStatusCode.OK, firstPromotion.StatusCode);
+        var secondPromotion = await client.PostAsync($"/api/evolution/candidates/{candidateId}/rollout/promote", content: null);
+        Assert.Equal(HttpStatusCode.OK, secondPromotion.StatusCode);
+
+        var response = await client.PostAsync($"/api/evolution/candidates/{candidateId}/rollout/promote", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
     private static async Task<int> CreateApprovedCandidateAsync(HttpClient client)
     {
         var candidateId = await CreateCandidateAsync(client);
@@ -143,5 +189,6 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
         string Title,
         string Summary,
         string Status,
+        string? RolloutStage,
         DateTime CreatedUtc);
 }
