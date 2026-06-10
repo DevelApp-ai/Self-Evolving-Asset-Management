@@ -84,6 +84,8 @@ public sealed class EvolutionOrchestrationService
         return UpdateStatus(id, "RolledBack");
     }
 
+    public EvolutionCandidateRecord AutoRollbackOnRegression(int id) => Rollback(id);
+
     public EvolutionCandidateRecord PromoteRollout(int id)
     {
         var candidate = GetById(id) ?? throw new InvalidOperationException($"Candidate '{id}' was not found.");

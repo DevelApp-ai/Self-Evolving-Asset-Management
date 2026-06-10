@@ -242,6 +242,25 @@ app.MapPost("/api/evolution/candidates/{id:int}/rollback", (int id, EvolutionOrc
     }
 });
 
+app.MapPost("/api/evolution/candidates/{id:int}/regression-signal", (int id, string? reason, EvolutionOrchestrationService evolutionService, EvolutionLifecycleService lifecycleService) =>
+{
+    if (evolutionService.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    try
+    {
+        var rolledBack = evolutionService.AutoRollbackOnRegression(id);
+        lifecycleService.Record(id, "AutoRolledBack", "system", reason);
+        return Results.Ok(rolledBack);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
+    }
+});
+
 app.MapPost("/api/evolution/candidates/{id:int}/release", (int id, EvolutionOrchestrationService evolutionService, EvolutionLifecycleService lifecycleService) =>
 {
     if (evolutionService.GetById(id) is null)

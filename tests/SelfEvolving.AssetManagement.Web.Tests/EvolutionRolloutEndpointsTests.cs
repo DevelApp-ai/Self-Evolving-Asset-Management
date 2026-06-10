@@ -175,6 +175,49 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task RegressionSignal_WhenActive_ReturnsOkAndStatusBecomesRolledBack()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateActiveCandidateAsync(client);
+
+        var response = await client.PostAsync($"/api/evolution/candidates/{candidateId}/regression-signal?reason=error-rate-spike", content: null);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var listResponse = await client.GetAsync("/api/evolution/candidates");
+        listResponse.EnsureSuccessStatusCode();
+        var candidates = await listResponse.Content.ReadFromJsonAsync<List<CandidateResponse>>();
+        Assert.NotNull(candidates);
+        Assert.Equal("RolledBack", candidates!.Single(x => x.Id == candidateId).Status);
+
+        var eventsResponse = await client.GetAsync($"/api/evolution/candidates/{candidateId}/events");
+        eventsResponse.EnsureSuccessStatusCode();
+        var events = await eventsResponse.Content.ReadFromJsonAsync<List<LifecycleEventResponse>>();
+        Assert.NotNull(events);
+        Assert.Contains(events!, x => x.EventType == "AutoRolledBack" && x.Details == "error-rate-spike");
+    }
+
+    [Fact]
+    public async Task RegressionSignal_WhenNotActive_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateApprovedCandidateAsync(client);
+
+        var response = await client.PostAsync($"/api/evolution/candidates/{candidateId}/regression-signal", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RegressionSignal_WhenMissing_ReturnsNotFound()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsync("/api/evolution/candidates/9999/regression-signal", content: null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private static async Task<int> CreateApprovedCandidateAsync(HttpClient client)
     {
         var candidateId = await CreateCandidateAsync(client);
@@ -241,4 +284,12 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
         string Status,
         string? RolloutStage,
         DateTime CreatedUtc);
+
+    private sealed record LifecycleEventResponse(
+        int Id,
+        int CandidateId,
+        string EventType,
+        string Actor,
+        string? Details,
+        DateTime OccurredUtc);
 }
