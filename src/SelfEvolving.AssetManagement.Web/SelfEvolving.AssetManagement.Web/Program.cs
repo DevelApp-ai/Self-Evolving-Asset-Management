@@ -18,6 +18,7 @@ builder.Services
 builder.Services.AddSingleton<ArchitectureSpecificationService>();
 builder.Services.AddSingleton<AssetInventoryService>();
 builder.Services.AddSingleton<OpaGuidancePolicyService>();
+builder.Services.AddSingleton<AssetOwnershipService>();
 
 var app = builder.Build();
 
@@ -68,6 +69,34 @@ app.MapPost("/api/assets", (CreateAssetRequest request, AssetInventoryService se
     catch (InvalidOperationException ex)
     {
         return Results.Conflict(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/assets/{id:int}/assignments", (int id, AssetInventoryService inventoryService, AssetOwnershipService ownershipService) =>
+{
+    if (inventoryService.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.Ok(ownershipService.GetAssignments(id));
+});
+
+app.MapPost("/api/assets/{id:int}/assignments", (int id, CreateAssetAssignmentRequest request, AssetInventoryService inventoryService, AssetOwnershipService ownershipService) =>
+{
+    if (inventoryService.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    try
+    {
+        var created = ownershipService.Assign(id, request);
+        return Results.Created($"/api/assets/{id}/assignments/{created.Id}", created);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
     }
 });
 

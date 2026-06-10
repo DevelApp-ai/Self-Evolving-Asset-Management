@@ -79,10 +79,64 @@ public class AssetEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(HttpStatusCode.Forbidden, deniedResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task AssignOwner_WhenAssetExists_ReturnsCreatedAndListIncludesActiveOwner()
+    {
+        using var client = _factory.CreateClient();
+        var createAssetResponse = await client.PostAsJsonAsync("/api/assets", new
+        {
+            assetTag = "A-901",
+            name = "Scanner",
+            category = "Hardware"
+        });
+
+        var asset = await createAssetResponse.Content.ReadFromJsonAsync<AssetResponse>();
+        Assert.NotNull(asset);
+
+        var assignResponse = await client.PostAsJsonAsync($"/api/assets/{asset!.Id}/assignments", new
+        {
+            ownerId = "u-901",
+            ownerName = "Ops Team"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, assignResponse.StatusCode);
+
+        var listResponse = await client.GetAsync($"/api/assets/{asset.Id}/assignments");
+        listResponse.EnsureSuccessStatusCode();
+
+        var assignments = await listResponse.Content.ReadFromJsonAsync<List<AssetAssignmentResponse>>();
+        Assert.NotNull(assignments);
+        Assert.Single(assignments!);
+        Assert.True(assignments[0].IsActive);
+        Assert.Equal("u-901", assignments[0].OwnerId);
+    }
+
+    [Fact]
+    public async Task AssignOwner_WhenAssetDoesNotExist_ReturnsNotFound()
+    {
+        using var client = _factory.CreateClient();
+
+        var assignResponse = await client.PostAsJsonAsync("/api/assets/99999/assignments", new
+        {
+            ownerId = "u-x",
+            ownerName = "Ghost Owner"
+        });
+
+        Assert.Equal(HttpStatusCode.NotFound, assignResponse.StatusCode);
+    }
+
     private sealed record AssetResponse(
         int Id,
         string AssetTag,
         string Name,
         string Category,
         DateTime CreatedUtc);
+
+    private sealed record AssetAssignmentResponse(
+        int Id,
+        int AssetId,
+        string OwnerId,
+        string OwnerName,
+        DateTime AssignedUtc,
+        bool IsActive);
 }
