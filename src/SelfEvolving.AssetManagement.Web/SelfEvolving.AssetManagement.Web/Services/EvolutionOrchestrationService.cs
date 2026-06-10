@@ -52,4 +52,20 @@ public sealed class EvolutionOrchestrationService
         _candidatesById[id] = updated;
         return updated;
     }
+
+    public EvolutionCandidateRecord Activate(int id)
+    {
+        var candidate = GetById(id) ?? throw new InvalidOperationException($"Candidate '{id}' was not found.");
+        if (candidate.Status == "Active")
+        {
+            throw new InvalidOperationException($"Candidate '{id}' is already active.");
+        }
+
+        if (candidate.Status != "Approved")
+        {
+            throw new InvalidOperationException($"Candidate '{id}' must be approved before activation.");
+        }
+
+        return UpdateStatus(id, "Active");
+    }
 }

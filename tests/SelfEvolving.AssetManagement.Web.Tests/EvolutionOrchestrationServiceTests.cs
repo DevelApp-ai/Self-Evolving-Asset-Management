@@ -43,4 +43,30 @@ public class EvolutionOrchestrationServiceTests
         Assert.Equal("Approved", updated.Status);
         Assert.Equal("Approved", service.GetById(created.Id)?.Status);
     }
+
+    [Fact]
+    public void Activate_WhenApproved_TransitionsToActive()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(4, "Ops", "Rollout", "Enable staged activation", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+
+        var activated = service.Activate(created.Id);
+
+        Assert.Equal("Active", activated.Status);
+        Assert.Equal("Active", service.GetById(created.Id)?.Status);
+    }
+
+    [Fact]
+    public void Activate_WhenNotApproved_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(5, "Ops", "Rollout", "Activate directly", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+
+        var action = () => service.Activate(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
 }

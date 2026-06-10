@@ -173,6 +173,24 @@ app.MapPost("/api/evolution/candidates/{id:int}/approvals", (int id, CreateEvolu
     }
 });
 
+app.MapPost("/api/evolution/candidates/{id:int}/activate", (int id, EvolutionOrchestrationService evolutionService) =>
+{
+    if (evolutionService.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    try
+    {
+        var activated = evolutionService.Activate(id);
+        return Results.Ok(activated);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
+    }
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
