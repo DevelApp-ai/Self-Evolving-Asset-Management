@@ -15,6 +15,9 @@ public sealed class EvolutionOrchestrationService
             .OrderByDescending(x => x.Id)
             .ToArray();
 
+    public EvolutionCandidateRecord? GetById(int id) =>
+        _candidatesById.TryGetValue(id, out var candidate) ? candidate : null;
+
     public EvolutionCandidateRecord CreateFromFeedback(FeedbackRecord feedback)
     {
         var id = Interlocked.Increment(ref _nextId);
@@ -36,5 +39,17 @@ public sealed class EvolutionOrchestrationService
 
         _candidatesById[id] = created;
         return created;
+    }
+
+    public EvolutionCandidateRecord UpdateStatus(int id, string status)
+    {
+        if (!_candidatesById.TryGetValue(id, out var candidate))
+        {
+            throw new InvalidOperationException($"Candidate '{id}' was not found.");
+        }
+
+        var updated = candidate with { Status = status };
+        _candidatesById[id] = updated;
+        return updated;
     }
 }

@@ -21,6 +21,7 @@ builder.Services.AddSingleton<OpaGuidancePolicyService>();
 builder.Services.AddSingleton<AssetOwnershipService>();
 builder.Services.AddSingleton<FeedbackIngestionService>();
 builder.Services.AddSingleton<EvolutionOrchestrationService>();
+builder.Services.AddSingleton<EvolutionApprovalService>();
 
 var app = builder.Build();
 
@@ -131,6 +132,40 @@ app.MapPost("/api/evolution/candidates/from-feedback/{feedbackId:int}", (int fee
     {
         var created = evolutionService.CreateFromFeedback(feedback);
         return Results.Created($"/api/evolution/candidates/{created.Id}", created);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/evolution/candidates/{id:int}/approvals", (int id, EvolutionOrchestrationService evolutionService, EvolutionApprovalService approvalService) =>
+{
+    if (evolutionService.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.Ok(approvalService.GetApprovals(id));
+});
+
+app.MapPost("/api/evolution/candidates/{id:int}/approvals", (int id, CreateEvolutionApprovalRequest request, EvolutionOrchestrationService evolutionService, EvolutionApprovalService approvalService) =>
+{
+    if (evolutionService.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    try
+    {
+        var created = approvalService.CreateApproval(id, request);
+        var status = created.Decision == "Approve" ? "Approved" : "Rejected";
+        evolutionService.UpdateStatus(id, status);
+        return Results.Created($"/api/evolution/candidates/{id}/approvals/{created.Id}", created);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
     }
     catch (InvalidOperationException ex)
     {

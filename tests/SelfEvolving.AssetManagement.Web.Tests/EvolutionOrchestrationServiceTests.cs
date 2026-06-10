@@ -30,4 +30,17 @@ public class EvolutionOrchestrationServiceTests
 
         Assert.Throws<InvalidOperationException>(action);
     }
+
+    [Fact]
+    public void UpdateStatus_WhenCandidateExists_UpdatesCandidateStatus()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(3, "Ops", "Rollout", "Require approval", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+
+        var updated = service.UpdateStatus(created.Id, "Approved");
+
+        Assert.Equal("Approved", updated.Status);
+        Assert.Equal("Approved", service.GetById(created.Id)?.Status);
+    }
 }
