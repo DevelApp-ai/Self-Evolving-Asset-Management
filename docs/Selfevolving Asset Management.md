@@ -76,7 +76,7 @@ Non-evolvable core:
 
 ## 9. Current Implementation Proximity Evaluation
 
-Estimated overall completion toward the target architecture: **~75%**.
+Estimated overall completion toward the target architecture: **~79%**.
 
 | Area | Status | Test Coverage |
 |---|---|---|
@@ -86,7 +86,7 @@ Estimated overall completion toward the target architecture: **~75%**.
 | PostgreSQL persistence and EF Core migrations | Not implemented | Not yet |
 | Feedback ingestion and telemetry pipeline | Partially implemented (in-memory feedback ingestion API) | Unit + integration-tested |
 | `DevelApp.SelfEvolvingFramework` runtime orchestration | Partially implemented (in-memory candidate generation from feedback) | Unit + integration-tested |
-| Rollout governance and approval workflow | Partially implemented (in-memory candidate approval/rejection + activation + rollback API) | Unit + integration-tested |
+| Rollout governance and approval workflow | Partially implemented (in-memory candidate approval/rejection + activation + rollback + lifecycle event audit API) | Unit + integration-tested |
 
 ### OPA Guidance (Current + Next)
 - Current implementation applies **OPA-style policy guidance** at asset create time (explicit allow/deny decision before persistence).

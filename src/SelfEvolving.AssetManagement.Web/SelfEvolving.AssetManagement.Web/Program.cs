@@ -22,6 +22,7 @@ builder.Services.AddSingleton<AssetOwnershipService>();
 builder.Services.AddSingleton<FeedbackIngestionService>();
 builder.Services.AddSingleton<EvolutionOrchestrationService>();
 builder.Services.AddSingleton<EvolutionApprovalService>();
+builder.Services.AddSingleton<EvolutionLifecycleService>();
 
 var app = builder.Build();
 
@@ -149,7 +150,17 @@ app.MapGet("/api/evolution/candidates/{id:int}/approvals", (int id, EvolutionOrc
     return Results.Ok(approvalService.GetApprovals(id));
 });
 
-app.MapPost("/api/evolution/candidates/{id:int}/approvals", (int id, CreateEvolutionApprovalRequest request, EvolutionOrchestrationService evolutionService, EvolutionApprovalService approvalService) =>
+app.MapGet("/api/evolution/candidates/{id:int}/events", (int id, EvolutionOrchestrationService evolutionService, EvolutionLifecycleService lifecycleService) =>
+{
+    if (evolutionService.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.Ok(lifecycleService.GetByCandidateId(id));
+});
+
+app.MapPost("/api/evolution/candidates/{id:int}/approvals", (int id, CreateEvolutionApprovalRequest request, EvolutionOrchestrationService evolutionService, EvolutionApprovalService approvalService, EvolutionLifecycleService lifecycleService) =>
 {
     if (evolutionService.GetById(id) is null)
     {
@@ -161,6 +172,7 @@ app.MapPost("/api/evolution/candidates/{id:int}/approvals", (int id, CreateEvolu
         var created = approvalService.CreateApproval(id, request);
         var status = created.Decision == "Approve" ? "Approved" : "Rejected";
         evolutionService.UpdateStatus(id, status);
+        lifecycleService.Record(id, status, created.ReviewerId, created.Notes);
         return Results.Created($"/api/evolution/candidates/{id}/approvals/{created.Id}", created);
     }
     catch (ArgumentException ex)
@@ -173,7 +185,7 @@ app.MapPost("/api/evolution/candidates/{id:int}/approvals", (int id, CreateEvolu
     }
 });
 
-app.MapPost("/api/evolution/candidates/{id:int}/activate", (int id, EvolutionOrchestrationService evolutionService) =>
+app.MapPost("/api/evolution/candidates/{id:int}/activate", (int id, EvolutionOrchestrationService evolutionService, EvolutionLifecycleService lifecycleService) =>
 {
     if (evolutionService.GetById(id) is null)
     {
@@ -183,6 +195,7 @@ app.MapPost("/api/evolution/candidates/{id:int}/activate", (int id, EvolutionOrc
     try
     {
         var activated = evolutionService.Activate(id);
+        lifecycleService.Record(id, "Activated", "system", null);
         return Results.Ok(activated);
     }
     catch (InvalidOperationException ex)
@@ -191,7 +204,7 @@ app.MapPost("/api/evolution/candidates/{id:int}/activate", (int id, EvolutionOrc
     }
 });
 
-app.MapPost("/api/evolution/candidates/{id:int}/rollback", (int id, EvolutionOrchestrationService evolutionService) =>
+app.MapPost("/api/evolution/candidates/{id:int}/rollback", (int id, EvolutionOrchestrationService evolutionService, EvolutionLifecycleService lifecycleService) =>
 {
     if (evolutionService.GetById(id) is null)
     {
@@ -201,6 +214,7 @@ app.MapPost("/api/evolution/candidates/{id:int}/rollback", (int id, EvolutionOrc
     try
     {
         var rolledBack = evolutionService.Rollback(id);
+        lifecycleService.Record(id, "RolledBack", "system", null);
         return Results.Ok(rolledBack);
     }
     catch (InvalidOperationException ex)
