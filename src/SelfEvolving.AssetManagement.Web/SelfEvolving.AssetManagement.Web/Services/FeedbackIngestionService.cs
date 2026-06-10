@@ -14,6 +14,9 @@ public sealed class FeedbackIngestionService
             .OrderByDescending(x => x.Id)
             .ToArray();
 
+    public FeedbackRecord? GetById(int id) =>
+        _feedbackById.TryGetValue(id, out var feedback) ? feedback : null;
+
     public FeedbackRecord Create(CreateFeedbackRequest request)
     {
         var source = request.Source?.Trim();

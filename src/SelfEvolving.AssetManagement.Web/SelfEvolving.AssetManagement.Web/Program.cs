@@ -20,6 +20,7 @@ builder.Services.AddSingleton<AssetInventoryService>();
 builder.Services.AddSingleton<OpaGuidancePolicyService>();
 builder.Services.AddSingleton<AssetOwnershipService>();
 builder.Services.AddSingleton<FeedbackIngestionService>();
+builder.Services.AddSingleton<EvolutionOrchestrationService>();
 
 var app = builder.Build();
 
@@ -113,6 +114,27 @@ app.MapPost("/api/feedback", (CreateFeedbackRequest request, FeedbackIngestionSe
     catch (ArgumentException ex)
     {
         return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+app.MapGet("/api/evolution/candidates", (EvolutionOrchestrationService service) => Results.Ok(service.GetAll()));
+
+app.MapPost("/api/evolution/candidates/from-feedback/{feedbackId:int}", (int feedbackId, FeedbackIngestionService feedbackService, EvolutionOrchestrationService evolutionService) =>
+{
+    var feedback = feedbackService.GetById(feedbackId);
+    if (feedback is null)
+    {
+        return Results.NotFound();
+    }
+
+    try
+    {
+        var created = evolutionService.CreateFromFeedback(feedback);
+        return Results.Created($"/api/evolution/candidates/{created.Id}", created);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
     }
 });
 
