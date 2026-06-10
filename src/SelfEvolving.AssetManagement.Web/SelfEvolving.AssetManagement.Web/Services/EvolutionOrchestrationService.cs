@@ -129,4 +129,17 @@ public sealed class EvolutionOrchestrationService
         _candidatesById[id] = updated;
         return updated;
     }
+
+    public EvolutionCandidateRecord Retire(int id)
+    {
+        var candidate = GetById(id) ?? throw new InvalidOperationException($"Candidate '{id}' was not found.");
+        if (candidate.Status is not ("Released" or "RolledBack"))
+        {
+            throw new InvalidOperationException($"Candidate '{id}' must be released or rolled back before retirement.");
+        }
+
+        var updated = candidate with { Status = "Retired" };
+        _candidatesById[id] = updated;
+        return updated;
+    }
 }

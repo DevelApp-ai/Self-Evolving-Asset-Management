@@ -224,4 +224,48 @@ public class EvolutionOrchestrationServiceTests
 
         Assert.Throws<InvalidOperationException>(action);
     }
+
+    [Fact]
+    public void Retire_WhenReleased_TransitionsToRetired()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(17, "Ops", "Retire", "Retire released candidate", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.Activate(created.Id);
+        service.PromoteRollout(created.Id);
+        service.PromoteRollout(created.Id);
+        service.Release(created.Id);
+
+        var retired = service.Retire(created.Id);
+
+        Assert.Equal("Retired", retired.Status);
+    }
+
+    [Fact]
+    public void Retire_WhenRolledBack_TransitionsToRetired()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(18, "Ops", "Retire", "Retire rolled back candidate", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.Activate(created.Id);
+        service.Rollback(created.Id);
+
+        var retired = service.Retire(created.Id);
+
+        Assert.Equal("Retired", retired.Status);
+    }
+
+    [Fact]
+    public void Retire_WhenStatusIsInvalid_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(19, "Ops", "Retire", "Cannot retire proposed", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+
+        var action = () => service.Retire(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
 }

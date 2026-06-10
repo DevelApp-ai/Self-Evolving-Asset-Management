@@ -280,6 +280,25 @@ app.MapPost("/api/evolution/candidates/{id:int}/release", (int id, EvolutionOrch
     }
 });
 
+app.MapPost("/api/evolution/candidates/{id:int}/retire", (int id, EvolutionOrchestrationService evolutionService, EvolutionLifecycleService lifecycleService) =>
+{
+    if (evolutionService.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    try
+    {
+        var retired = evolutionService.Retire(id);
+        lifecycleService.Record(id, "Retired", "system", null);
+        return Results.Ok(retired);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
+    }
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()

@@ -218,6 +218,63 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task RetireCandidate_WhenReleased_ReturnsOkAndStatusBecomesRetired()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateFullyPromotedActiveCandidateAsync(client);
+        var releaseResponse = await client.PostAsync($"/api/evolution/candidates/{candidateId}/release", content: null);
+        releaseResponse.EnsureSuccessStatusCode();
+
+        var retireResponse = await client.PostAsync($"/api/evolution/candidates/{candidateId}/retire", content: null);
+        Assert.Equal(HttpStatusCode.OK, retireResponse.StatusCode);
+
+        var listResponse = await client.GetAsync("/api/evolution/candidates");
+        listResponse.EnsureSuccessStatusCode();
+        var candidates = await listResponse.Content.ReadFromJsonAsync<List<CandidateResponse>>();
+        Assert.NotNull(candidates);
+        Assert.Equal("Retired", candidates!.Single(x => x.Id == candidateId).Status);
+    }
+
+    [Fact]
+    public async Task RetireCandidate_WhenRolledBack_ReturnsOkAndRecordsEvent()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateActiveCandidateAsync(client);
+        var rollbackResponse = await client.PostAsync($"/api/evolution/candidates/{candidateId}/rollback", content: null);
+        rollbackResponse.EnsureSuccessStatusCode();
+
+        var retireResponse = await client.PostAsync($"/api/evolution/candidates/{candidateId}/retire", content: null);
+        Assert.Equal(HttpStatusCode.OK, retireResponse.StatusCode);
+
+        var eventsResponse = await client.GetAsync($"/api/evolution/candidates/{candidateId}/events");
+        eventsResponse.EnsureSuccessStatusCode();
+        var events = await eventsResponse.Content.ReadFromJsonAsync<List<LifecycleEventResponse>>();
+        Assert.NotNull(events);
+        Assert.Contains(events!, x => x.EventType == "Retired" && x.Actor == "system");
+    }
+
+    [Fact]
+    public async Task RetireCandidate_WhenStateIsInvalid_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateApprovedCandidateAsync(client);
+
+        var response = await client.PostAsync($"/api/evolution/candidates/{candidateId}/retire", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RetireCandidate_WhenMissing_ReturnsNotFound()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsync("/api/evolution/candidates/9999/retire", content: null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private static async Task<int> CreateApprovedCandidateAsync(HttpClient client)
     {
         var candidateId = await CreateCandidateAsync(client);
