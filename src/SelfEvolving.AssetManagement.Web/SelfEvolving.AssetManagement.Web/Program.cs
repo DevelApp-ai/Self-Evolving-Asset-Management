@@ -242,6 +242,25 @@ app.MapPost("/api/evolution/candidates/{id:int}/rollback", (int id, EvolutionOrc
     }
 });
 
+app.MapPost("/api/evolution/candidates/{id:int}/release", (int id, EvolutionOrchestrationService evolutionService, EvolutionLifecycleService lifecycleService) =>
+{
+    if (evolutionService.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    try
+    {
+        var released = evolutionService.Release(id);
+        lifecycleService.Record(id, "Released", "system", null);
+        return Results.Ok(released);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
+    }
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()

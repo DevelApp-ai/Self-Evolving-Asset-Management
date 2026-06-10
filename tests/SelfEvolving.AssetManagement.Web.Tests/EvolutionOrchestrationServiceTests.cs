@@ -154,4 +154,47 @@ public class EvolutionOrchestrationServiceTests
 
         Assert.Throws<InvalidOperationException>(action);
     }
+
+    [Fact]
+    public void Release_WhenActiveAndFull_TransitionsToReleased()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(12, "Ops", "Release", "Release successful rollout", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.Activate(created.Id);
+        service.PromoteRollout(created.Id);
+        service.PromoteRollout(created.Id);
+
+        var released = service.Release(created.Id);
+
+        Assert.Equal("Released", released.Status);
+        Assert.Equal("Full", released.RolloutStage);
+    }
+
+    [Fact]
+    public void Release_WhenNotFull_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(13, "Ops", "Release", "Cannot release before full rollout", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.Activate(created.Id);
+
+        var action = () => service.Release(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
+
+    [Fact]
+    public void Release_WhenNotActive_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(14, "Ops", "Release", "Cannot release before activation", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+
+        var action = () => service.Release(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
 }

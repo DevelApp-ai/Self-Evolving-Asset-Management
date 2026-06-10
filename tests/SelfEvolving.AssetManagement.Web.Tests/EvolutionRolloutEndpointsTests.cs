@@ -135,6 +135,46 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
+    [Fact]
+    public async Task ReleaseCandidate_WhenActiveAndFull_ReturnsOkAndStatusBecomesReleased()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateFullyPromotedActiveCandidateAsync(client);
+
+        var releaseResponse = await client.PostAsync($"/api/evolution/candidates/{candidateId}/release", content: null);
+        Assert.Equal(HttpStatusCode.OK, releaseResponse.StatusCode);
+
+        var listResponse = await client.GetAsync("/api/evolution/candidates");
+        listResponse.EnsureSuccessStatusCode();
+
+        var candidates = await listResponse.Content.ReadFromJsonAsync<List<CandidateResponse>>();
+        Assert.NotNull(candidates);
+        var candidate = candidates!.Single(x => x.Id == candidateId);
+        Assert.Equal("Released", candidate.Status);
+        Assert.Equal("Full", candidate.RolloutStage);
+    }
+
+    [Fact]
+    public async Task ReleaseCandidate_WhenNotFull_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateActiveCandidateAsync(client);
+
+        var response = await client.PostAsync($"/api/evolution/candidates/{candidateId}/release", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReleaseCandidate_WhenMissing_ReturnsNotFound()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsync("/api/evolution/candidates/9999/release", content: null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private static async Task<int> CreateApprovedCandidateAsync(HttpClient client)
     {
         var candidateId = await CreateCandidateAsync(client);
@@ -174,6 +214,16 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
         var candidate = await candidateResponse.Content.ReadFromJsonAsync<CandidateResponse>();
         Assert.NotNull(candidate);
         return candidate!.Id;
+    }
+
+    private static async Task<int> CreateFullyPromotedActiveCandidateAsync(HttpClient client)
+    {
+        var candidateId = await CreateActiveCandidateAsync(client);
+        var firstPromotion = await client.PostAsync($"/api/evolution/candidates/{candidateId}/rollout/promote", content: null);
+        firstPromotion.EnsureSuccessStatusCode();
+        var secondPromotion = await client.PostAsync($"/api/evolution/candidates/{candidateId}/rollout/promote", content: null);
+        secondPromotion.EnsureSuccessStatusCode();
+        return candidateId;
     }
 
     private sealed record FeedbackResponse(
