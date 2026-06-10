@@ -106,6 +106,12 @@ app.MapPost("/api/assets/{id:int}/assignments", (int id, CreateAssetAssignmentRe
 
 app.MapGet("/api/feedback", (FeedbackIngestionService service) => Results.Ok(service.GetAll()));
 
+app.MapGet("/api/feedback/{id:int}", (int id, FeedbackIngestionService service) =>
+{
+    var feedback = service.GetById(id);
+    return feedback is null ? Results.NotFound() : Results.Ok(feedback);
+});
+
 app.MapPost("/api/feedback", (CreateFeedbackRequest request, FeedbackIngestionService service) =>
 {
     try
@@ -120,6 +126,12 @@ app.MapPost("/api/feedback", (CreateFeedbackRequest request, FeedbackIngestionSe
 });
 
 app.MapGet("/api/evolution/candidates", (EvolutionOrchestrationService service) => Results.Ok(service.GetAll()));
+
+app.MapGet("/api/evolution/candidates/{id:int}", (int id, EvolutionOrchestrationService service) =>
+{
+    var candidate = service.GetById(id);
+    return candidate is null ? Results.NotFound() : Results.Ok(candidate);
+});
 
 app.MapPost("/api/evolution/candidates/from-feedback/{feedbackId:int}", (int feedbackId, FeedbackIngestionService feedbackService, EvolutionOrchestrationService evolutionService) =>
 {

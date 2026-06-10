@@ -36,6 +36,40 @@ public class FeedbackEndpointsTests : IClassFixture<WebApplicationFactory<Progra
     }
 
     [Fact]
+    public async Task GetFeedbackById_WhenExists_ReturnsOk()
+    {
+        using var client = _factory.CreateClient();
+
+        var createResponse = await client.PostAsJsonAsync("/api/feedback", new
+        {
+            source = "Ops",
+            subject = "Point query",
+            message = "Need point lookup"
+        });
+
+        var created = await createResponse.Content.ReadFromJsonAsync<FeedbackResponse>();
+        Assert.NotNull(created);
+
+        var getResponse = await client.GetAsync($"/api/feedback/{created!.Id}");
+        getResponse.EnsureSuccessStatusCode();
+
+        var fetched = await getResponse.Content.ReadFromJsonAsync<FeedbackResponse>();
+        Assert.NotNull(fetched);
+        Assert.Equal(created.Id, fetched!.Id);
+        Assert.Equal("Point query", fetched.Subject);
+    }
+
+    [Fact]
+    public async Task GetFeedbackById_WhenMissing_ReturnsNotFound()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/feedback/9999");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task CreateFeedback_WhenSourceMissing_ReturnsBadRequest()
     {
         using var client = _factory.CreateClient();

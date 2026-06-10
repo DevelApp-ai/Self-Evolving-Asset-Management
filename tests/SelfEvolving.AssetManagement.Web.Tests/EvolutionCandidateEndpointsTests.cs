@@ -69,6 +69,43 @@ public class EvolutionCandidateEndpointsTests : IClassFixture<WebApplicationFact
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
     }
 
+    [Fact]
+    public async Task GetCandidateById_WhenExists_ReturnsOk()
+    {
+        using var client = _factory.CreateClient();
+        var feedbackResponse = await client.PostAsJsonAsync("/api/feedback", new
+        {
+            source = "UX",
+            subject = "Single candidate lookup",
+            message = "Need direct candidate endpoint"
+        });
+
+        var feedback = await feedbackResponse.Content.ReadFromJsonAsync<FeedbackResponse>();
+        Assert.NotNull(feedback);
+
+        var createResponse = await client.PostAsync($"/api/evolution/candidates/from-feedback/{feedback!.Id}", content: null);
+        var created = await createResponse.Content.ReadFromJsonAsync<CandidateResponse>();
+        Assert.NotNull(created);
+
+        var getResponse = await client.GetAsync($"/api/evolution/candidates/{created!.Id}");
+        getResponse.EnsureSuccessStatusCode();
+
+        var fetched = await getResponse.Content.ReadFromJsonAsync<CandidateResponse>();
+        Assert.NotNull(fetched);
+        Assert.Equal(created.Id, fetched!.Id);
+        Assert.Equal("Proposed", fetched.Status);
+    }
+
+    [Fact]
+    public async Task GetCandidateById_WhenMissing_ReturnsNotFound()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/evolution/candidates/9999");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private sealed record FeedbackResponse(
         int Id,
         string Source,
