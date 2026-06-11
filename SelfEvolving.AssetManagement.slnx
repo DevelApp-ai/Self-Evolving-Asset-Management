@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/SelfEvolving.AssetManagement.Web/">
+    <Project Path="src/SelfEvolving.AssetManagement.Web/SelfEvolving.AssetManagement.Web.Client/SelfEvolving.AssetManagement.Web.Client.csproj" />
+    <Project Path="src/SelfEvolving.AssetManagement.Web/SelfEvolving.AssetManagement.Web/SelfEvolving.AssetManagement.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SelfEvolving.AssetManagement.Web.Tests/SelfEvolving.AssetManagement.Web.Tests.csproj" />
+  </Folder>
+</Solution>
