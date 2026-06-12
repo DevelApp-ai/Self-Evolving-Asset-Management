@@ -98,3 +98,33 @@ Estimated overall completion toward the target architecture: **~88%**.
   1. Externalize policies to Rego bundles and evaluate through an OPA sidecar/service.
   2. Add policy decision logging/audit records in PostgreSQL.
   3. Add integration tests that validate policy outcomes against loaded Rego policies.
+
+## 10. DevelApp.SelfEvolvingFramework v1.1.0 Upgrade Assessment
+
+`DevelApp.SelfEvolvingFramework` v1.1.0 introduces meaningful capabilities that align with current gaps in this system.
+
+### 10.1 New capabilities in v1.1.0 relevant to this solution
+- **Execution-budget enforcement** via `EvolutionOrchestratorOptions.ExecutionBudgetMilliseconds`.
+- **Run telemetry** on evolution results via `EvolutionResult.Telemetry` and `EvolutionRunTelemetry` (stage timings, diagnostic count, timeout/cancellation source).
+- **Behavior-based fitness scoring** via `ExecutionFlowFitnessEvaluator` and `ExecutionFlowFitnessScoringOptions`.
+- **Post-compilation behavioral evaluation support**, including Playwright-based execution flow evaluation.
+- **OPA WASM policy evaluation support** via `OpaWasmAstPolicyEvaluator`.
+- **Expanded orchestration extensions** for crossover/evolution engine scenarios (including GeneticSharp/SemanticKernel integrations).
+
+### 10.2 Improvement opportunities for Self-Evolving Asset Management
+1. **Stabilize runtime safety for candidate generation**
+   - Apply `ExecutionBudgetMilliseconds` in orchestration flows to prevent long-running candidate evolution operations from affecting API responsiveness.
+2. **Add auditable operational observability**
+   - Persist `EvolutionRunTelemetry` alongside candidate lifecycle records to support governance, rollback forensics, and rollout decisions.
+3. **Strengthen rollout quality gates**
+   - Use execution-flow fitness scoring as a promotion gate before candidate activation/release.
+4. **Move from OPA-style checks to real OPA policy execution**
+   - Replace current hardcoded policy logic with `OpaWasmAstPolicyEvaluator`-driven policy checks and versioned policy bundles.
+5. **Raise automation depth for evolution generation**
+   - Introduce mutator/crossover abstractions from v1.1.0 to improve candidate diversity and reduce manual candidate crafting.
+
+### 10.3 Recommended adoption order
+- **Phase 1 (low risk, high immediate value):** execution budget + telemetry persistence.
+- **Phase 2 (quality uplift):** execution-flow fitness scoring integrated into approval/rollout endpoints.
+- **Phase 3 (governance hardening):** OPA WASM policy integration and policy-driven audit trails.
+- **Phase 4 (advanced evolution):** genetic/crossover strategy integrations for broader autonomous optimization.
