@@ -1,10 +1,25 @@
 using SelfEvolving.AssetManagement.Web.Models;
+using SelfEvolving.AssetManagement.Web.Configuration;
 using SelfEvolving.AssetManagement.Web.Services;
+using Microsoft.Extensions.Options;
 
 namespace SelfEvolving.AssetManagement.Web.Tests;
 
 public class EvolutionOrchestrationServiceTests
 {
+    [Fact]
+    public void Constructor_WhenExecutionBudgetIsNonPositive_ThrowsArgumentOutOfRangeException()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            EvolutionExecutionBudgetMilliseconds = 0
+        });
+
+        var action = () => new EvolutionOrchestrationService(options);
+
+        Assert.Throws<ArgumentOutOfRangeException>(action);
+    }
+
     [Fact]
     public void CreateFromFeedback_GeneratesProposedCandidate()
     {
@@ -17,6 +32,27 @@ public class EvolutionOrchestrationServiceTests
         Assert.Equal("Proposed", candidate.Status);
         Assert.Contains("Search", candidate.Title);
         Assert.Single(service.GetAll());
+    }
+
+    [Fact]
+    public void CreateFromFeedback_PersistsTelemetryWithConfiguredBudget()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            EvolutionExecutionBudgetMilliseconds = 1234
+        });
+        var service = new EvolutionOrchestrationService(options);
+        var feedback = new FeedbackRecord(20, "Ops", "Telemetry", "Persist telemetry for candidate generation", DateTime.UtcNow);
+
+        var candidate = service.CreateFromFeedback(feedback);
+        var telemetry = service.GetTelemetry(candidate.Id);
+
+        Assert.NotNull(telemetry);
+        Assert.Equal(candidate.Id, telemetry!.CandidateId);
+        Assert.Equal(1234, telemetry.ExecutionBudgetMilliseconds);
+        Assert.False(telemetry.TimedOut);
+        Assert.False(telemetry.CanceledByCaller);
+        Assert.True(telemetry.TotalDurationMilliseconds >= 0);
     }
 
     [Fact]

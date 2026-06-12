@@ -106,6 +106,44 @@ public class EvolutionCandidateEndpointsTests : IClassFixture<WebApplicationFact
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetCandidateTelemetry_WhenCandidateExists_ReturnsTelemetry()
+    {
+        using var client = _factory.CreateClient();
+        var feedbackResponse = await client.PostAsJsonAsync("/api/feedback", new
+        {
+            source = "Ops",
+            subject = "Telemetry request",
+            message = "Capture orchestration telemetry"
+        });
+
+        var feedback = await feedbackResponse.Content.ReadFromJsonAsync<FeedbackResponse>();
+        Assert.NotNull(feedback);
+
+        var createResponse = await client.PostAsync($"/api/evolution/candidates/from-feedback/{feedback!.Id}", content: null);
+        var created = await createResponse.Content.ReadFromJsonAsync<CandidateResponse>();
+        Assert.NotNull(created);
+
+        var telemetryResponse = await client.GetAsync($"/api/evolution/candidates/{created!.Id}/telemetry");
+        telemetryResponse.EnsureSuccessStatusCode();
+
+        var telemetry = await telemetryResponse.Content.ReadFromJsonAsync<EvolutionTelemetryResponse>();
+        Assert.NotNull(telemetry);
+        Assert.Equal(created.Id, telemetry!.CandidateId);
+        Assert.Equal(30000, telemetry.ExecutionBudgetMilliseconds);
+        Assert.False(telemetry.TimedOut);
+    }
+
+    [Fact]
+    public async Task GetCandidateTelemetry_WhenCandidateMissing_ReturnsNotFound()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/evolution/candidates/9999/telemetry");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private sealed record FeedbackResponse(
         int Id,
         string Source,
@@ -120,4 +158,13 @@ public class EvolutionCandidateEndpointsTests : IClassFixture<WebApplicationFact
         string Summary,
         string Status,
         DateTime CreatedUtc);
+
+    private sealed record EvolutionTelemetryResponse(
+        int CandidateId,
+        double TotalDurationMilliseconds,
+        int DiagnosticCount,
+        bool CanceledByCaller,
+        bool TimedOut,
+        int ExecutionBudgetMilliseconds,
+        DateTime RecordedUtc);
 }

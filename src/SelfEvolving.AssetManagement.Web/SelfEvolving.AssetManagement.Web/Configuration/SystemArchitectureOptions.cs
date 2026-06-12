@@ -13,4 +13,6 @@ public sealed class SystemArchitectureOptions
     public bool BlazorWebAssemblyEnabled { get; set; } = true;
 
     public bool BlazorServerEnabled { get; set; } = true;
+
+    public int EvolutionExecutionBudgetMilliseconds { get; set; } = 30000;
 }

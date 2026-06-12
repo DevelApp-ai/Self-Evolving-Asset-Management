@@ -133,6 +133,17 @@ app.MapGet("/api/evolution/candidates/{id:int}", (int id, EvolutionOrchestration
     return candidate is null ? Results.NotFound() : Results.Ok(candidate);
 });
 
+app.MapGet("/api/evolution/candidates/{id:int}/telemetry", (int id, EvolutionOrchestrationService service) =>
+{
+    if (service.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    var telemetry = service.GetTelemetry(id);
+    return telemetry is null ? Results.NotFound() : Results.Ok(telemetry);
+});
+
 app.MapPost("/api/evolution/candidates/from-feedback/{feedbackId:int}", (int feedbackId, FeedbackIngestionService feedbackService, EvolutionOrchestrationService evolutionService) =>
 {
     var feedback = feedbackService.GetById(feedbackId);

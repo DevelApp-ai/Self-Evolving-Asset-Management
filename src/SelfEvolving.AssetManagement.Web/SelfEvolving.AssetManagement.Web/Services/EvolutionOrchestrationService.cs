@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Threading;
+using Microsoft.Extensions.Options;
+using SelfEvolving.AssetManagement.Web.Configuration;
 using SelfEvolving.AssetManagement.Web.Models;
 
 namespace SelfEvolving.AssetManagement.Web.Services;
@@ -9,7 +11,18 @@ public sealed class EvolutionOrchestrationService
     private static readonly string[] RolloutStages = ["Internal", "Pilot", "Full"];
     private readonly ConcurrentDictionary<int, EvolutionCandidateRecord> _candidatesById = new();
     private readonly ConcurrentDictionary<int, int> _candidateIdByFeedbackId = new();
+    private readonly ConcurrentDictionary<int, EvolutionRunTelemetryRecord> _telemetryByCandidateId = new();
+    private readonly int _executionBudgetMilliseconds;
     private int _nextId;
+
+    public EvolutionOrchestrationService(IOptions<SystemArchitectureOptions>? options = null)
+    {
+        _executionBudgetMilliseconds = options?.Value.EvolutionExecutionBudgetMilliseconds ?? 30000;
+        if (_executionBudgetMilliseconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options), "Evolution execution budget must be greater than zero.");
+        }
+    }
 
     public IReadOnlyList<EvolutionCandidateRecord> GetAll() =>
         _candidatesById.Values
@@ -19,8 +32,12 @@ public sealed class EvolutionOrchestrationService
     public EvolutionCandidateRecord? GetById(int id) =>
         _candidatesById.TryGetValue(id, out var candidate) ? candidate : null;
 
+    public EvolutionRunTelemetryRecord? GetTelemetry(int candidateId) =>
+        _telemetryByCandidateId.TryGetValue(candidateId, out var telemetry) ? telemetry : null;
+
     public EvolutionCandidateRecord CreateFromFeedback(FeedbackRecord feedback)
     {
+        var startedUtc = DateTime.UtcNow;
         var id = Interlocked.Increment(ref _nextId);
         var title = $"Improve: {feedback.Subject}";
         var summary = feedback.Message;
@@ -40,6 +57,18 @@ public sealed class EvolutionOrchestrationService
             DateTime.UtcNow);
 
         _candidatesById[id] = created;
+        _telemetryByCandidateId[id] = new EvolutionRunTelemetryRecord(
+            CandidateId: id,
+            TotalDurationMilliseconds: (DateTime.UtcNow - startedUtc).TotalMilliseconds,
+            MutationDurationMilliseconds: 0,
+            SecurityEvaluationDurationMilliseconds: 0,
+            CompilationDurationMilliseconds: 0,
+            FitnessEvaluationDurationMilliseconds: 0,
+            DiagnosticCount: 0,
+            CanceledByCaller: false,
+            TimedOut: false,
+            ExecutionBudgetMilliseconds: _executionBudgetMilliseconds,
+            RecordedUtc: DateTime.UtcNow);
         return created;
     }
 
