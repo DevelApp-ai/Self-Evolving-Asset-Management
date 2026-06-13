@@ -144,6 +144,39 @@ app.MapGet("/api/evolution/candidates/{id:int}/telemetry", (int id, EvolutionOrc
     return telemetry is null ? Results.NotFound() : Results.Ok(telemetry);
 });
 
+app.MapGet("/api/evolution/candidates/{id:int}/fitness", (int id, EvolutionOrchestrationService service) =>
+{
+    if (service.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    var fitness = service.GetFitnessEvaluation(id);
+    return fitness is null ? Results.NotFound() : Results.Ok(fitness);
+});
+
+app.MapPost("/api/evolution/candidates/{id:int}/fitness", (int id, CreateEvolutionFitnessEvaluationRequest request, EvolutionOrchestrationService service) =>
+{
+    if (service.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    try
+    {
+        var recorded = service.SetFitnessEvaluation(id, request);
+        return Results.Created($"/api/evolution/candidates/{id}/fitness", recorded);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
+    }
+});
+
 app.MapPost("/api/evolution/candidates/from-feedback/{feedbackId:int}", (int feedbackId, FeedbackIngestionService feedbackService, EvolutionOrchestrationService evolutionService) =>
 {
     var feedback = feedbackService.GetById(feedbackId);

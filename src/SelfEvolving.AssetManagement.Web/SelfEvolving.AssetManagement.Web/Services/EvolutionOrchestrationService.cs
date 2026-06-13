@@ -12,15 +12,23 @@ public sealed class EvolutionOrchestrationService
     private readonly ConcurrentDictionary<int, EvolutionCandidateRecord> _candidatesById = new();
     private readonly ConcurrentDictionary<int, int> _candidateIdByFeedbackId = new();
     private readonly ConcurrentDictionary<int, EvolutionRunTelemetryRecord> _telemetryByCandidateId = new();
+    private readonly ConcurrentDictionary<int, EvolutionFitnessEvaluationRecord> _fitnessByCandidateId = new();
     private readonly int _executionBudgetMilliseconds;
+    private readonly double _minimumFitnessScore;
     private int _nextId;
 
     public EvolutionOrchestrationService(IOptions<SystemArchitectureOptions>? options = null)
     {
         _executionBudgetMilliseconds = options?.Value.EvolutionExecutionBudgetMilliseconds ?? 30000;
+        _minimumFitnessScore = options?.Value.EvolutionMinimumFitnessScore ?? 0.8;
         if (_executionBudgetMilliseconds <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(options), "Evolution execution budget must be greater than zero.");
+        }
+
+        if (_minimumFitnessScore is < 0 or > 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options), "Evolution minimum fitness score must be between 0 and 1.");
         }
     }
 
@@ -34,6 +42,40 @@ public sealed class EvolutionOrchestrationService
 
     public EvolutionRunTelemetryRecord? GetTelemetry(int candidateId) =>
         _telemetryByCandidateId.TryGetValue(candidateId, out var telemetry) ? telemetry : null;
+
+    public EvolutionFitnessEvaluationRecord? GetFitnessEvaluation(int candidateId) =>
+        _fitnessByCandidateId.TryGetValue(candidateId, out var evaluation) ? evaluation : null;
+
+    public EvolutionFitnessEvaluationRecord SetFitnessEvaluation(int candidateId, CreateEvolutionFitnessEvaluationRequest request)
+    {
+        if (!_candidatesById.ContainsKey(candidateId))
+        {
+            throw new InvalidOperationException($"Candidate '{candidateId}' was not found.");
+        }
+
+        var evaluatorId = request.EvaluatorId?.Trim();
+        var notes = request.Notes?.Trim();
+
+        if (string.IsNullOrWhiteSpace(evaluatorId))
+        {
+            throw new ArgumentException("EvaluatorId is required.");
+        }
+
+        if (request.Score is < 0 or > 1)
+        {
+            throw new ArgumentException("Score must be between 0 and 1.");
+        }
+
+        var evaluation = new EvolutionFitnessEvaluationRecord(
+            CandidateId: candidateId,
+            Score: request.Score,
+            EvaluatorId: evaluatorId,
+            Notes: string.IsNullOrWhiteSpace(notes) ? null : notes,
+            EvaluatedUtc: DateTime.UtcNow);
+
+        _fitnessByCandidateId[candidateId] = evaluation;
+        return evaluation;
+    }
 
     public EvolutionCandidateRecord CreateFromFeedback(FeedbackRecord feedback)
     {
@@ -97,6 +139,11 @@ public sealed class EvolutionOrchestrationService
             throw new InvalidOperationException($"Candidate '{id}' must be approved before activation.");
         }
 
+        if (!MeetsFitnessGate(id))
+        {
+            throw new InvalidOperationException($"Candidate '{id}' does not meet the minimum fitness score gate.");
+        }
+
         var updated = candidate with { Status = "Active", RolloutStage = RolloutStages[0] };
         _candidatesById[id] = updated;
         return updated;
@@ -154,6 +201,11 @@ public sealed class EvolutionOrchestrationService
             throw new InvalidOperationException($"Candidate '{id}' must be promoted to '{RolloutStages[^1]}' before release.");
         }
 
+        if (!MeetsFitnessGate(id))
+        {
+            throw new InvalidOperationException($"Candidate '{id}' does not meet the minimum fitness score gate.");
+        }
+
         var updated = candidate with { Status = "Released" };
         _candidatesById[id] = updated;
         return updated;
@@ -171,4 +223,8 @@ public sealed class EvolutionOrchestrationService
         _candidatesById[id] = updated;
         return updated;
     }
+
+    private bool MeetsFitnessGate(int candidateId) =>
+        _fitnessByCandidateId.TryGetValue(candidateId, out var evaluation) &&
+        evaluation.Score >= _minimumFitnessScore;
 }

@@ -27,6 +27,13 @@ public class EvolutionLifecycleEndpointsTests : IClassFixture<WebApplicationFact
         });
         approvalResponse.EnsureSuccessStatusCode();
 
+        var fitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/fitness", new
+        {
+            score = 0.9,
+            evaluatorId = "fitness-events"
+        });
+        fitnessResponse.EnsureSuccessStatusCode();
+
         var activateResponse = await client.PostAsync($"/api/evolution/candidates/{candidate.Id}/activate", content: null);
         activateResponse.EnsureSuccessStatusCode();
 
