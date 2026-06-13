@@ -139,6 +139,27 @@ public class EvolutionApprovalEndpointsTests : IClassFixture<WebApplicationFacto
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
+    [Fact]
+    public async Task RejectCandidate_WhenFitnessMissing_ReturnsCreatedAndUpdatesCandidateStatus()
+    {
+        using var client = _factory.CreateClient();
+        var candidate = await CreateCandidateAsync(client);
+
+        var response = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/approvals", new
+        {
+            decision = "Reject",
+            reviewerId = "approver-1",
+            notes = "not fit for rollout"
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var candidatesResponse = await client.GetAsync("/api/evolution/candidates");
+        candidatesResponse.EnsureSuccessStatusCode();
+        var candidates = await candidatesResponse.Content.ReadFromJsonAsync<List<CandidateResponse>>();
+        Assert.NotNull(candidates);
+        Assert.Equal("Rejected", candidates!.Single(x => x.Id == candidate.Id).Status);
+    }
+
     private static async Task<CandidateResponse> CreateCandidateAsync(HttpClient client)
     {
         var feedbackResponse = await client.PostAsJsonAsync("/api/feedback", new
