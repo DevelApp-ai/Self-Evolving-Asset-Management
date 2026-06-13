@@ -76,7 +76,7 @@ Non-evolvable core:
 
 ## 9. Current Implementation Proximity Evaluation
 
-Estimated overall completion toward the target architecture: **~88%**.
+Estimated overall completion toward the target architecture: **~92%**.
 
 | Area | Status | Test Coverage |
 |---|---|---|
@@ -85,8 +85,8 @@ Estimated overall completion toward the target architecture: **~88%**.
 | Asset ownership assignment API | Partially implemented (in-memory) | Unit + integration-tested |
 | PostgreSQL persistence and EF Core migrations | Not implemented | Not yet |
 | Feedback ingestion and telemetry pipeline | Partially implemented (in-memory feedback ingestion API) | Unit + integration-tested |
-| `DevelApp.SelfEvolvingFramework` runtime orchestration | Partially implemented (in-memory candidate generation from feedback) | Unit + integration-tested |
-| Rollout governance and approval workflow | Partially implemented (in-memory candidate approval/rejection + staged rollout promotion + activation + release + rollback + regression-signal-triggered auto-rollback + retirement + lifecycle event audit API) | Unit + integration-tested |
+| `DevelApp.SelfEvolvingFramework` runtime orchestration | Partially implemented (in-memory candidate generation from feedback + execution budget configuration + run telemetry capture + fitness evaluation API) | Unit + integration-tested |
+| Rollout governance and approval workflow | Partially implemented (in-memory candidate approval/rejection + staged rollout promotion + activation + release + rollback + regression-signal-triggered auto-rollback + retirement + lifecycle event audit API + minimum fitness gate for approval/promotion/release) | Unit + integration-tested |
 
 ### OPA Guidance (Current + Next)
 - Current implementation applies **OPA-style policy guidance** at asset create time (explicit allow/deny decision before persistence).
@@ -111,20 +111,20 @@ Estimated overall completion toward the target architecture: **~88%**.
 - **OPA WASM policy evaluation support** via `OpaWasmAstPolicyEvaluator`.
 - **Expanded orchestration extensions** for crossover/evolution engine scenarios (including GeneticSharp/SemanticKernel integrations).
 
-### 10.2 Improvement opportunities for Self-Evolving Asset Management
-1. **Stabilize runtime safety for candidate generation**
-   - Apply `ExecutionBudgetMilliseconds` in orchestration flows to prevent long-running candidate evolution operations from affecting API responsiveness.
-2. **Add auditable operational observability**
-   - Persist `EvolutionRunTelemetry` alongside candidate lifecycle records to support governance, rollback forensics, and rollout decisions.
-3. **Strengthen rollout quality gates**
-   - Use execution-flow fitness scoring as a promotion gate before candidate activation/release.
-4. **Move from OPA-style checks to real OPA policy execution**
+### 10.2 Implemented improvements in current codebase
+1. **Runtime safety budget applied**
+   - `EvolutionExecutionBudgetMilliseconds` is enforced through orchestration configuration and validated at service construction.
+2. **Operational observability endpointed**
+   - `EvolutionRunTelemetry` is recorded for each generated candidate and exposed through candidate telemetry APIs.
+3. **Rollout quality gates enforced**
+   - Fitness scoring is required for approval and rechecked before activation, rollout promotion, and release.
+
+### 10.3 Remaining improvement opportunities for Self-Evolving Asset Management
+1. **Move from OPA-style checks to real OPA policy execution**
    - Replace current hardcoded policy logic with `OpaWasmAstPolicyEvaluator`-driven policy checks and versioned policy bundles.
-5. **Raise automation depth for evolution generation**
+2. **Raise automation depth for evolution generation**
    - Introduce mutator/crossover abstractions from v1.1.0 to improve candidate diversity and reduce manual candidate crafting.
 
-### 10.3 Recommended adoption order
-- **Phase 1 (low risk, high immediate value):** execution budget + telemetry persistence.
-- **Phase 2 (quality uplift):** execution-flow fitness scoring integrated into approval/rollout endpoints.
-- **Phase 3 (governance hardening):** OPA WASM policy integration and policy-driven audit trails.
-- **Phase 4 (advanced evolution):** genetic/crossover strategy integrations for broader autonomous optimization.
+### 10.4 Recommended adoption order for remaining scope
+- **Phase 1 (governance hardening):** OPA WASM policy integration and policy-driven audit trails.
+- **Phase 2 (advanced evolution):** genetic/crossover strategy integrations for broader autonomous optimization.
