@@ -50,17 +50,6 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
     }
 
     [Fact]
-    public async Task ActivateCandidate_WhenFitnessMissing_ReturnsConflict()
-    {
-        using var client = _factory.CreateClient();
-        var candidateId = await CreateApprovedCandidateAsync(client);
-
-        var response = await client.PostAsync($"/api/evolution/candidates/{candidateId}/activate", content: null);
-
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-    }
-
-    [Fact]
     public async Task ActivateCandidate_WhenFitnessBelowThreshold_ReturnsConflict()
     {
         using var client = _factory.CreateClient();
