@@ -149,6 +149,31 @@ public class EvolutionOrchestrationServiceTests
     }
 
     [Fact]
+    public void MeetsMinimumFitnessGate_WhenFitnessIsMissing_ReturnsFalse()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(25, "Ops", "Approval", "Need approval-time quality gate", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+
+        var result = service.MeetsMinimumFitnessGate(created.Id);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void MeetsMinimumFitnessGate_WhenFitnessMeetsThreshold_ReturnsTrue()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(26, "Ops", "Approval", "Approve only quality candidates", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
+
+        var result = service.MeetsMinimumFitnessGate(created.Id);
+
+        Assert.True(result);
+    }
+
+    [Fact]
     public void Rollback_WhenActive_TransitionsToRolledBack()
     {
         var service = new EvolutionOrchestrationService();

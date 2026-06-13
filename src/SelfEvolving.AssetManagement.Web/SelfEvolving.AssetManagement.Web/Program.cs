@@ -225,6 +225,12 @@ app.MapPost("/api/evolution/candidates/{id:int}/approvals", (int id, CreateEvolu
 
     try
     {
+        if (string.Equals(request.Decision?.Trim(), "Approve", StringComparison.OrdinalIgnoreCase) &&
+            !evolutionService.MeetsMinimumFitnessGate(id))
+        {
+            throw new InvalidOperationException($"Candidate '{id}' does not meet the minimum fitness score gate.");
+        }
+
         var created = approvalService.CreateApproval(id, request);
         var status = created.Decision == "Approve" ? "Approved" : "Rejected";
         evolutionService.UpdateStatus(id, status);

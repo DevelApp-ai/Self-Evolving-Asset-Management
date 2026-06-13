@@ -349,6 +349,12 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
     private static async Task<int> CreateApprovedCandidateAsync(HttpClient client)
     {
         var candidateId = await CreateCandidateAsync(client);
+        var fitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidateId}/fitness", new
+        {
+            score = 0.95,
+            evaluatorId = "fitness-gate"
+        });
+        fitnessResponse.EnsureSuccessStatusCode();
         var approvalResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidateId}/approvals", new
         {
             decision = "Approve",

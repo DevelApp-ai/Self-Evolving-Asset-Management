@@ -18,6 +18,12 @@ public class EvolutionLifecycleEndpointsTests : IClassFixture<WebApplicationFact
     {
         using var client = _factory.CreateClient();
         var candidate = await CreateCandidateAsync(client);
+        var fitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/fitness", new
+        {
+            score = 0.9,
+            evaluatorId = "fitness-events"
+        });
+        fitnessResponse.EnsureSuccessStatusCode();
 
         var approvalResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/approvals", new
         {
@@ -26,13 +32,6 @@ public class EvolutionLifecycleEndpointsTests : IClassFixture<WebApplicationFact
             notes = "Ready"
         });
         approvalResponse.EnsureSuccessStatusCode();
-
-        var fitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/fitness", new
-        {
-            score = 0.9,
-            evaluatorId = "fitness-events"
-        });
-        fitnessResponse.EnsureSuccessStatusCode();
 
         var activateResponse = await client.PostAsync($"/api/evolution/candidates/{candidate.Id}/activate", content: null);
         activateResponse.EnsureSuccessStatusCode();

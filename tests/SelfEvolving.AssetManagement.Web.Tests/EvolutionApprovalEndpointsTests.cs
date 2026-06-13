@@ -18,6 +18,13 @@ public class EvolutionApprovalEndpointsTests : IClassFixture<WebApplicationFacto
     {
         using var client = _factory.CreateClient();
         var candidate = await CreateCandidateAsync(client);
+        var fitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/fitness", new
+        {
+            score = 0.95,
+            evaluatorId = "fitness-gate",
+            notes = "meets approval gate"
+        });
+        fitnessResponse.EnsureSuccessStatusCode();
 
         var approvalResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/approvals", new
         {
@@ -93,6 +100,43 @@ public class EvolutionApprovalEndpointsTests : IClassFixture<WebApplicationFacto
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ApproveCandidate_WhenFitnessMissing_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidate = await CreateCandidateAsync(client);
+
+        var response = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/approvals", new
+        {
+            decision = "Approve",
+            reviewerId = "approver-1"
+        });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ApproveCandidate_WhenFitnessBelowThreshold_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidate = await CreateCandidateAsync(client);
+        var fitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/fitness", new
+        {
+            score = 0.4,
+            evaluatorId = "fitness-gate",
+            notes = "below threshold"
+        });
+        fitnessResponse.EnsureSuccessStatusCode();
+
+        var response = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/approvals", new
+        {
+            decision = "Approve",
+            reviewerId = "approver-1"
+        });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     private static async Task<CandidateResponse> CreateCandidateAsync(HttpClient client)

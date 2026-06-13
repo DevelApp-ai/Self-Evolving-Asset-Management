@@ -46,6 +46,8 @@ public sealed class EvolutionOrchestrationService
     public EvolutionFitnessEvaluationRecord? GetFitnessEvaluation(int candidateId) =>
         _fitnessByCandidateId.TryGetValue(candidateId, out var evaluation) ? evaluation : null;
 
+    public bool MeetsMinimumFitnessGate(int candidateId) => MeetsFitnessGate(candidateId);
+
     public EvolutionFitnessEvaluationRecord SetFitnessEvaluation(int candidateId, CreateEvolutionFitnessEvaluationRequest request)
     {
         if (!_candidatesById.ContainsKey(candidateId))
