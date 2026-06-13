@@ -237,6 +237,22 @@ public class EvolutionOrchestrationServiceTests
     }
 
     [Fact]
+    public void PromoteRollout_WhenFitnessFallsBelowThreshold_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(23, "Ops", "Rollout", "Block stage promotion on quality regression", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
+        service.Activate(created.Id);
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.4, "fitness-bot", "regressed"));
+
+        var action = () => service.PromoteRollout(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
+
+    [Fact]
     public void Release_WhenActiveAndFull_TransitionsToReleased()
     {
         var service = new EvolutionOrchestrationService();
@@ -275,6 +291,24 @@ public class EvolutionOrchestrationServiceTests
         var service = new EvolutionOrchestrationService();
         var feedback = new FeedbackRecord(14, "Ops", "Release", "Cannot release before activation", DateTime.UtcNow);
         var created = service.CreateFromFeedback(feedback);
+
+        var action = () => service.Release(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
+
+    [Fact]
+    public void Release_WhenFitnessFallsBelowThreshold_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(24, "Ops", "Release", "Do not release regressed candidate", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
+        service.Activate(created.Id);
+        service.PromoteRollout(created.Id);
+        service.PromoteRollout(created.Id);
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.3, "fitness-bot", "regressed before release"));
 
         var action = () => service.Release(created.Id);
 

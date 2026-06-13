@@ -170,6 +170,11 @@ public sealed class EvolutionOrchestrationService
             throw new InvalidOperationException($"Candidate '{id}' must be active before rollout promotion.");
         }
 
+        if (!MeetsFitnessGate(id))
+        {
+            throw new InvalidOperationException($"Candidate '{id}' does not meet the minimum fitness score gate.");
+        }
+
         var currentStage = candidate.RolloutStage ?? RolloutStages[0];
         var currentIndex = Array.IndexOf(RolloutStages, currentStage);
         if (currentIndex < 0)
