@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Threading;
+using Microsoft.EntityFrameworkCore;
+using SelfEvolving.AssetManagement.Web.Data;
 using SelfEvolving.AssetManagement.Web.Models;
 
 namespace SelfEvolving.AssetManagement.Web.Services;
@@ -7,12 +9,33 @@ namespace SelfEvolving.AssetManagement.Web.Services;
 public sealed class EvolutionApprovalService
 {
     private static readonly HashSet<string> AllowedDecisions = ["Approve", "Reject"];
+    private readonly AssetManagementDbContext? _dbContext;
     private readonly ConcurrentDictionary<int, List<EvolutionApprovalRecord>> _approvalsByCandidateId = new();
     private readonly object _sync = new();
     private int _nextApprovalId;
 
+    public EvolutionApprovalService(AssetManagementDbContext? dbContext = null)
+    {
+        _dbContext = dbContext;
+    }
+
     public IReadOnlyList<EvolutionApprovalRecord> GetApprovals(int candidateId)
     {
+        if (_dbContext is not null)
+        {
+            return _dbContext.EvolutionApprovals.AsNoTracking()
+                .Where(x => x.CandidateId == candidateId)
+                .OrderByDescending(x => x.Id)
+                .Select(x => new EvolutionApprovalRecord(
+                    x.Id,
+                    x.CandidateId,
+                    x.Decision,
+                    x.ReviewerId,
+                    x.Notes,
+                    x.ReviewedUtc))
+                .ToArray();
+        }
+
         if (!_approvalsByCandidateId.TryGetValue(candidateId, out var approvals))
         {
             return [];
@@ -41,6 +64,35 @@ public sealed class EvolutionApprovalService
         if (!AllowedDecisions.Contains(normalizedDecision))
         {
             throw new ArgumentException("Decision must be either Approve or Reject.");
+        }
+
+        if (_dbContext is not null)
+        {
+            var hasReview = _dbContext.EvolutionApprovals.Any(x => x.CandidateId == candidateId);
+            if (hasReview)
+            {
+                throw new InvalidOperationException($"Candidate '{candidateId}' has already been reviewed.");
+            }
+
+            var createdEntity = new EvolutionApprovalEntity
+            {
+                CandidateId = candidateId,
+                Decision = normalizedDecision,
+                ReviewerId = reviewerId,
+                Notes = string.IsNullOrWhiteSpace(notes) ? null : notes,
+                ReviewedUtc = DateTime.UtcNow
+            };
+
+            _dbContext.EvolutionApprovals.Add(createdEntity);
+            _dbContext.SaveChanges();
+
+            return new EvolutionApprovalRecord(
+                createdEntity.Id,
+                createdEntity.CandidateId,
+                createdEntity.Decision,
+                createdEntity.ReviewerId,
+                createdEntity.Notes,
+                createdEntity.ReviewedUtc);
         }
 
         lock (_sync)

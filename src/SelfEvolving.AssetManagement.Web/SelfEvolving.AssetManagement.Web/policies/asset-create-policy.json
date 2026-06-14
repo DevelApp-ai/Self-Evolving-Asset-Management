@@ -1,0 +1,12 @@
+{
+  "policyVersion": "v1.1.0",
+  "assetTagPrefix": "A-",
+  "maxNameLength": 100,
+  "allowedCategories": [
+    "Hardware",
+    "Software",
+    "Devices",
+    "General"
+  ],
+  "policySource": "opa-bundle-json"
+}

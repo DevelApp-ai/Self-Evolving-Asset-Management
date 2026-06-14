@@ -65,7 +65,10 @@ public class EvolutionOrchestrationServiceTests
         Assert.Equal(1234, telemetry.ExecutionBudgetMilliseconds);
         Assert.False(telemetry.TimedOut);
         Assert.False(telemetry.CanceledByCaller);
-        Assert.True(telemetry.TotalDurationMilliseconds >= 0);
+        Assert.True(telemetry.TotalDurationMilliseconds >= 1);
+        Assert.True(telemetry.MutationDurationMilliseconds >= 1);
+        Assert.True(telemetry.SecurityEvaluationDurationMilliseconds >= 1);
+        Assert.True(telemetry.CompilationDurationMilliseconds >= 1);
     }
 
     [Fact]
@@ -78,6 +81,18 @@ public class EvolutionOrchestrationServiceTests
         var action = () => service.CreateFromFeedback(feedback);
 
         Assert.Throws<InvalidOperationException>(action);
+    }
+
+    [Fact]
+    public void CreateFromFeedback_WhenPriorCandidateExists_AppliesCrossoverInTitle()
+    {
+        var service = new EvolutionOrchestrationService();
+        service.CreateFromFeedback(new FeedbackRecord(31, "UX", "Search", "Need better filters", DateTime.UtcNow));
+
+        var created = service.CreateFromFeedback(new FeedbackRecord(32, "UX", "Dashboard", "Improve KPI view", DateTime.UtcNow));
+
+        Assert.Contains(" + ", created.Title);
+        Assert.Contains("[mutated:v1.1-crossover]", created.Summary);
     }
 
     [Fact]

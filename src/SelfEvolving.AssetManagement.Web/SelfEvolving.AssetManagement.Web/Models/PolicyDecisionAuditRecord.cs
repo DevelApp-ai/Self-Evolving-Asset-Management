@@ -8,4 +8,6 @@ public sealed record PolicyDecisionAuditRecord(
     string Name,
     string Category,
     IReadOnlyList<string> DenyReasons,
+    string PolicyVersion,
+    string PolicySource,
     DateTime EvaluatedUtc);

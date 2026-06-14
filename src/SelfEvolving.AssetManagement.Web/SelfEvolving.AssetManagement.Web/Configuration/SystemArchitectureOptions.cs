@@ -17,4 +17,8 @@ public sealed class SystemArchitectureOptions
     public int EvolutionExecutionBudgetMilliseconds { get; set; } = 30000;
 
     public double EvolutionMinimumFitnessScore { get; set; } = 0.8;
+
+    public string OpaPolicyBundlePath { get; set; } = "policies/asset-create-policy.json";
+
+    public string OpaPolicyBundleVersion { get; set; } = "v1.0.0";
 }

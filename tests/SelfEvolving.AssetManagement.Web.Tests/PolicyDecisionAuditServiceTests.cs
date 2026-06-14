@@ -18,6 +18,7 @@ public class PolicyDecisionAuditServiceTests
         Assert.Equal("AssetCreate", created.Operation);
         Assert.True(created.Allowed);
         Assert.Equal("A-120", created.AssetTag);
+        Assert.Equal("inline-v1", created.PolicyVersion);
         Assert.Single(records);
         Assert.Equal(created.Id, records[0].Id);
     }
@@ -33,5 +34,6 @@ public class PolicyDecisionAuditServiceTests
 
         Assert.False(created.Allowed);
         Assert.Single(created.DenyReasons);
+        Assert.Equal("in-process", created.PolicySource);
     }
 }

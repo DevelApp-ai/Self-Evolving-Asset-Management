@@ -1,8 +1,10 @@
 using SelfEvolving.AssetManagement.Web.Client.Pages;
 using SelfEvolving.AssetManagement.Web.Components;
 using SelfEvolving.AssetManagement.Web.Configuration;
+using SelfEvolving.AssetManagement.Web.Data;
 using SelfEvolving.AssetManagement.Web.Models;
 using SelfEvolving.AssetManagement.Web.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,17 +17,44 @@ builder.Services
     .AddOptions<SystemArchitectureOptions>()
     .Bind(builder.Configuration.GetSection(SystemArchitectureOptions.SectionName));
 
-builder.Services.AddSingleton<ArchitectureSpecificationService>();
-builder.Services.AddSingleton<AssetInventoryService>();
-builder.Services.AddSingleton<OpaGuidancePolicyService>();
-builder.Services.AddSingleton<PolicyDecisionAuditService>();
-builder.Services.AddSingleton<AssetOwnershipService>();
-builder.Services.AddSingleton<FeedbackIngestionService>();
-builder.Services.AddSingleton<EvolutionOrchestrationService>();
-builder.Services.AddSingleton<EvolutionApprovalService>();
-builder.Services.AddSingleton<EvolutionLifecycleService>();
+var fallbackSqlitePath = Path.Combine(Path.GetTempPath(), $"self-evolving-asset-management-{Guid.NewGuid():N}.db");
+
+builder.Services.AddDbContext<AssetManagementDbContext>((serviceProvider, dbOptions) =>
+{
+    var architectureOptions = serviceProvider
+        .GetRequiredService<Microsoft.Extensions.Options.IOptions<SystemArchitectureOptions>>()
+        .Value;
+    var connectionString = architectureOptions.DatabaseConnectionString?.Trim();
+    var usePostgreSql = string.Equals(architectureOptions.DatabaseProvider, "PostgreSQL", StringComparison.OrdinalIgnoreCase) &&
+                        !string.IsNullOrWhiteSpace(connectionString) &&
+                        !connectionString.Contains("******", StringComparison.Ordinal);
+
+    if (usePostgreSql)
+    {
+        dbOptions.UseNpgsql(connectionString);
+        return;
+    }
+
+    dbOptions.UseSqlite($"Data Source={fallbackSqlitePath}");
+});
+
+builder.Services.AddScoped<ArchitectureSpecificationService>();
+builder.Services.AddScoped<AssetInventoryService>();
+builder.Services.AddScoped<OpaGuidancePolicyService>();
+builder.Services.AddScoped<PolicyDecisionAuditService>();
+builder.Services.AddScoped<AssetOwnershipService>();
+builder.Services.AddScoped<FeedbackIngestionService>();
+builder.Services.AddScoped<EvolutionOrchestrationService>();
+builder.Services.AddScoped<EvolutionApprovalService>();
+builder.Services.AddScoped<EvolutionLifecycleService>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AssetManagementDbContext>();
+    dbContext.Database.EnsureCreated();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

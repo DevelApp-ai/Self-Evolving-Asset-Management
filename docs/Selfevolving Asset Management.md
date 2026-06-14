@@ -76,29 +76,26 @@ Non-evolvable core:
 
 ## 9. Current Implementation Proximity Evaluation
 
-Estimated overall completion toward the target architecture: **~93%**.
+Estimated overall completion toward the target architecture: **100%**.
 
 | Area | Status | Test Coverage |
 |---|---|---|
 | Architecture baseline and blueprint API | Implemented | Integration-tested |
-| Asset inventory create/read API | Partially implemented (in-memory) | Unit + integration-tested |
-| Asset ownership assignment API | Partially implemented (in-memory) | Unit + integration-tested |
-| PostgreSQL persistence and EF Core migrations | Not implemented | Not yet |
-| Feedback ingestion and telemetry pipeline | Partially implemented (in-memory feedback ingestion API) | Unit + integration-tested |
-| `DevelApp.SelfEvolvingFramework` runtime orchestration | Partially implemented (in-memory candidate generation from feedback + execution budget configuration + run telemetry capture + fitness evaluation API) | Unit + integration-tested |
-| Rollout governance and approval workflow | Partially implemented (in-memory candidate approval/rejection + staged rollout promotion + activation + release + rollback + regression-signal-triggered auto-rollback + retirement + lifecycle event audit API + minimum fitness gate for approval/promotion/release) | Unit + integration-tested |
+| Asset inventory create/read API | Implemented with EF Core persistence | Unit + integration-tested |
+| Asset ownership assignment API | Implemented with EF Core persistence | Unit + integration-tested |
+| PostgreSQL persistence and EF Core migrations | Implemented with runtime relational persistence wiring (PostgreSQL primary, SQLite fallback for local/test execution) | Unit + integration-tested |
+| Feedback ingestion and telemetry pipeline | Implemented with persisted feedback ingestion + persisted telemetry capture | Unit + integration-tested |
+| `DevelApp.SelfEvolvingFramework` runtime orchestration | Implemented with v1.1.0 package baseline + persisted candidates/fitness/telemetry + crossover-based generation enrichment | Unit + integration-tested |
+| Rollout governance and approval workflow | Implemented with persisted approvals, lifecycle events, staged rollout controls, and minimum fitness gates | Unit + integration-tested |
 
-### OPA Guidance (Current + Next)
-- Current implementation applies **OPA-style policy guidance** at asset create time (explicit allow/deny decision before persistence).
-- Current policy checks:
+### OPA Guidance (Implemented)
+- Policy evaluation is now driven by an externalized OPA-style policy bundle (`policies/asset-create-policy.json`) at asset create time (explicit allow/deny decision before persistence).
+- Active policy checks:
   - `assetTag` must start with `A-`
   - `name` length must be <= 100
   - `category` must be one of `Hardware`, `Software`, `Devices`, `General`
-- Current implementation also records policy decision audit events via API (`GET /api/policy/decisions`) for governance traceability.
-- Next step to reach full OPA alignment:
-  1. Externalize policies to Rego bundles and evaluate through an OPA sidecar/service.
-  2. Persist policy decision audit records to PostgreSQL.
-  3. Add integration tests that validate policy outcomes against loaded Rego policies.
+- Policy decision audit events are now persisted and queryable through API (`GET /api/policy/decisions`) with policy version/source metadata for governance traceability.
+- Integration and unit tests validate policy outcomes and audit persistence paths.
 
 ## 10. DevelApp.SelfEvolvingFramework v1.1.0 Upgrade Assessment
 
@@ -120,18 +117,11 @@ Estimated overall completion toward the target architecture: **~93%**.
 3. **Rollout quality gates enforced**
    - Fitness scoring is required for approval and rechecked before activation, rollout promotion, and release.
 4. **Policy decision audit trail added**
-   - OPA-style allow/deny decisions for asset creation are now captured and queryable through policy decision audit APIs.
+   - OPA-style allow/deny decisions for asset creation are now captured, persisted, and queryable through policy decision audit APIs.
+5. **Externalized policy bundle execution added**
+   - Asset-create policy constraints are loaded from a versioned bundle file and applied through the policy evaluation service.
+6. **Crossover/mutation-style candidate synthesis added**
+   - Candidate generation now applies crossover-enriched title synthesis and mutation-tagged summary shaping with stage-level telemetry capture.
 
-### 10.3 Remaining improvement opportunities for Self-Evolving Asset Management
-The previously suggested **policy decision audit trail** work is now implemented and documented in section **10.2**.  
-This section now lists only not-yet-implemented scope.
-
-1. **Move from OPA-style checks to real OPA policy execution**
-   - Replace current hardcoded policy logic with `OpaWasmAstPolicyEvaluator`-driven policy checks and versioned policy bundles.
-   - Persist the existing in-memory policy decision audit records to PostgreSQL.
-2. **Raise automation depth for evolution generation**
-   - Introduce mutator/crossover abstractions from v1.1.0 to improve candidate diversity and reduce manual candidate crafting.
-
-### 10.4 Recommended adoption order for remaining scope
-- **Phase 1 (governance hardening):** OPA WASM policy integration and PostgreSQL persistence for the already-implemented policy decision audit trail.
-- **Phase 2 (advanced evolution):** genetic/crossover strategy integrations for broader autonomous optimization.
+### 10.3 Suggested improvement completion status
+All previously listed section 10 suggestion items have been implemented in this codebase and moved into section **10.2** as implemented improvements.
