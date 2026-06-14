@@ -76,7 +76,7 @@ Non-evolvable core:
 
 ## 9. Current Implementation Proximity Evaluation
 
-Estimated overall completion toward the target architecture: **~92%**.
+Estimated overall completion toward the target architecture: **~93%**.
 
 | Area | Status | Test Coverage |
 |---|---|---|
@@ -94,9 +94,10 @@ Estimated overall completion toward the target architecture: **~92%**.
   - `assetTag` must start with `A-`
   - `name` length must be <= 100
   - `category` must be one of `Hardware`, `Software`, `Devices`, `General`
+- Current implementation also records policy decision audit events via API (`GET /api/policy/decisions`) for governance traceability.
 - Next step to reach full OPA alignment:
   1. Externalize policies to Rego bundles and evaluate through an OPA sidecar/service.
-  2. Add policy decision logging/audit records in PostgreSQL.
+  2. Persist policy decision audit records to PostgreSQL.
   3. Add integration tests that validate policy outcomes against loaded Rego policies.
 
 ## 10. DevelApp.SelfEvolvingFramework v1.1.0 Upgrade Assessment
@@ -118,6 +119,8 @@ Estimated overall completion toward the target architecture: **~92%**.
    - `EvolutionRunTelemetry` is recorded for each generated candidate and exposed through candidate telemetry APIs.
 3. **Rollout quality gates enforced**
    - Fitness scoring is required for approval and rechecked before activation, rollout promotion, and release.
+4. **Policy decision audit trail added**
+   - OPA-style allow/deny decisions for asset creation are now captured and queryable through policy decision audit APIs.
 
 ### 10.3 Remaining improvement opportunities for Self-Evolving Asset Management
 1. **Move from OPA-style checks to real OPA policy execution**
@@ -126,5 +129,5 @@ Estimated overall completion toward the target architecture: **~92%**.
    - Introduce mutator/crossover abstractions from v1.1.0 to improve candidate diversity and reduce manual candidate crafting.
 
 ### 10.4 Recommended adoption order for remaining scope
-- **Phase 1 (governance hardening):** OPA WASM policy integration and policy-driven audit trails.
+- **Phase 1 (governance hardening):** OPA WASM policy integration and PostgreSQL-backed policy decision audit persistence.
 - **Phase 2 (advanced evolution):** genetic/crossover strategy integrations for broader autonomous optimization.

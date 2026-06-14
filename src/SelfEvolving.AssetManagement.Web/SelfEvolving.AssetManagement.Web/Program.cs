@@ -18,6 +18,7 @@ builder.Services
 builder.Services.AddSingleton<ArchitectureSpecificationService>();
 builder.Services.AddSingleton<AssetInventoryService>();
 builder.Services.AddSingleton<OpaGuidancePolicyService>();
+builder.Services.AddSingleton<PolicyDecisionAuditService>();
 builder.Services.AddSingleton<AssetOwnershipService>();
 builder.Services.AddSingleton<FeedbackIngestionService>();
 builder.Services.AddSingleton<EvolutionOrchestrationService>();
@@ -46,6 +47,7 @@ app.UseAntiforgery();
 app.MapGet("/api/system/blueprint", (ArchitectureSpecificationService service) => Results.Ok(service.GetBlueprint()));
 
 app.MapGet("/api/assets", (AssetInventoryService service) => Results.Ok(service.GetAll()));
+app.MapGet("/api/policy/decisions", (PolicyDecisionAuditService service) => Results.Ok(service.GetAll()));
 
 app.MapGet("/api/assets/{id:int}", (int id, AssetInventoryService service) =>
 {
@@ -53,9 +55,10 @@ app.MapGet("/api/assets/{id:int}", (int id, AssetInventoryService service) =>
     return asset is null ? Results.NotFound() : Results.Ok(asset);
 });
 
-app.MapPost("/api/assets", (CreateAssetRequest request, AssetInventoryService service, OpaGuidancePolicyService policyService) =>
+app.MapPost("/api/assets", (CreateAssetRequest request, AssetInventoryService service, OpaGuidancePolicyService policyService, PolicyDecisionAuditService policyAuditService) =>
 {
     var policyDecision = policyService.EvaluateAssetCreate(request);
+    policyAuditService.RecordAssetCreate(request, policyDecision);
     if (!policyDecision.Allowed)
     {
         return Results.StatusCode(StatusCodes.Status403Forbidden);
