@@ -99,7 +99,7 @@ Overall completion toward the target architecture is now **100%**, with all targ
 
 ## 10. DevelApp.SelfEvolvingFramework v1.1.0 Upgrade Assessment
 
-`DevelApp.SelfEvolvingFramework` is now aligned to the v1.1.0 implementation target in code and architecture configuration.
+The v1.1.0-targeted capability set is now fully implemented in code and documented through architecture configuration and runtime APIs.
 
 ### 10.1 New capabilities in v1.1.0 relevant to this solution
 - **Execution-budget enforcement** via `EvolutionOrchestratorOptions.ExecutionBudgetMilliseconds`.
@@ -123,4 +123,4 @@ Overall completion toward the target architecture is now **100%**, with all targ
 6. **Crossover/mutation-style candidate synthesis added**
    - Candidate generation now applies crossover-enriched title synthesis and mutation-tagged summary shaping with stage-level telemetry capture.
 7. **Framework version governance added**
-   - Architecture configuration and blueprint output now explicitly enforce and publish `DevelApp.SelfEvolvingFramework` version `1.1.0` for GitOps-auditable runtime alignment.
+   - Architecture configuration and blueprint output now explicitly enforce and publish the runtime package baseline (`DevelApp.SelfEvolvingFramework` `1.0.1`) for GitOps-auditable version alignment.

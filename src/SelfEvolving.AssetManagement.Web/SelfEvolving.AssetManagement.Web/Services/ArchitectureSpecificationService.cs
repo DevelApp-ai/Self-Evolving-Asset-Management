@@ -19,9 +19,9 @@ public sealed class ArchitectureSpecificationService(IOptions<SystemArchitecture
             throw new InvalidOperationException("SystemArchitecture:EvolutionFrameworkPackage must be DevelApp.SelfEvolvingFramework.");
         }
 
-        if (!string.Equals(_options.EvolutionFrameworkVersion, "1.1.0", StringComparison.Ordinal))
+        if (!string.Equals(_options.EvolutionFrameworkVersion, "1.0.1", StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("SystemArchitecture:EvolutionFrameworkVersion must be 1.1.0.");
+            throw new InvalidOperationException("SystemArchitecture:EvolutionFrameworkVersion must be 1.0.1.");
         }
 
         return new ArchitectureBlueprint(

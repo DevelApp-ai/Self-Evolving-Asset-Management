@@ -6,7 +6,7 @@ public sealed class SystemArchitectureOptions
 
     public string EvolutionFrameworkPackage { get; set; } = "DevelApp.SelfEvolvingFramework";
 
-    public string EvolutionFrameworkVersion { get; set; } = "1.1.0";
+    public string EvolutionFrameworkVersion { get; set; } = "1.0.1";
 
     public string DatabaseProvider { get; set; } = "PostgreSQL";
 
