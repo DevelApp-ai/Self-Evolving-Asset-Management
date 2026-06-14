@@ -123,11 +123,15 @@ Estimated overall completion toward the target architecture: **~93%**.
    - OPA-style allow/deny decisions for asset creation are now captured and queryable through policy decision audit APIs.
 
 ### 10.3 Remaining improvement opportunities for Self-Evolving Asset Management
+The previously suggested **policy decision audit trail** work is now implemented and documented in section **10.2**.  
+This section now lists only not-yet-implemented scope.
+
 1. **Move from OPA-style checks to real OPA policy execution**
    - Replace current hardcoded policy logic with `OpaWasmAstPolicyEvaluator`-driven policy checks and versioned policy bundles.
+   - Persist the existing in-memory policy decision audit records to PostgreSQL.
 2. **Raise automation depth for evolution generation**
    - Introduce mutator/crossover abstractions from v1.1.0 to improve candidate diversity and reduce manual candidate crafting.
 
 ### 10.4 Recommended adoption order for remaining scope
-- **Phase 1 (governance hardening):** OPA WASM policy integration and PostgreSQL-backed policy decision audit persistence.
+- **Phase 1 (governance hardening):** OPA WASM policy integration and PostgreSQL persistence for the already-implemented policy decision audit trail.
 - **Phase 2 (advanced evolution):** genetic/crossover strategy integrations for broader autonomous optimization.
