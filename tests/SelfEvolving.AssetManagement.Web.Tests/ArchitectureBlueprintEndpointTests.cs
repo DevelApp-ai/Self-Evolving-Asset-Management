@@ -25,6 +25,7 @@ public class ArchitectureBlueprintEndpointTests : IClassFixture<WebApplicationFa
 
         Assert.NotNull(blueprint);
         Assert.Equal("DevelApp.SelfEvolvingFramework", blueprint!.EvolutionFrameworkPackage);
+        Assert.Equal("1.0.1", blueprint.EvolutionFrameworkVersion);
         Assert.Equal("PostgreSQL", blueprint.DatabaseProvider);
         Assert.True(blueprint.BlazorWebAssemblyEnabled);
         Assert.True(blueprint.BlazorServerEnabled);
@@ -33,6 +34,7 @@ public class ArchitectureBlueprintEndpointTests : IClassFixture<WebApplicationFa
 
     private sealed record ArchitectureBlueprintResponse(
         string EvolutionFrameworkPackage,
+        string EvolutionFrameworkVersion,
         string DatabaseProvider,
         bool BlazorWebAssemblyEnabled,
         bool BlazorServerEnabled,

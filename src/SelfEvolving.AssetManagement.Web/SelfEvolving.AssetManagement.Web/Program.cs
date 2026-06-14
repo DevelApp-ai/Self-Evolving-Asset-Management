@@ -1,8 +1,10 @@
 using SelfEvolving.AssetManagement.Web.Client.Pages;
 using SelfEvolving.AssetManagement.Web.Components;
 using SelfEvolving.AssetManagement.Web.Configuration;
+using SelfEvolving.AssetManagement.Web.Data;
 using SelfEvolving.AssetManagement.Web.Models;
 using SelfEvolving.AssetManagement.Web.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,16 +17,44 @@ builder.Services
     .AddOptions<SystemArchitectureOptions>()
     .Bind(builder.Configuration.GetSection(SystemArchitectureOptions.SectionName));
 
-builder.Services.AddSingleton<ArchitectureSpecificationService>();
-builder.Services.AddSingleton<AssetInventoryService>();
-builder.Services.AddSingleton<OpaGuidancePolicyService>();
-builder.Services.AddSingleton<AssetOwnershipService>();
-builder.Services.AddSingleton<FeedbackIngestionService>();
-builder.Services.AddSingleton<EvolutionOrchestrationService>();
-builder.Services.AddSingleton<EvolutionApprovalService>();
-builder.Services.AddSingleton<EvolutionLifecycleService>();
+var fallbackSqlitePath = Path.Combine(Path.GetTempPath(), $"self-evolving-asset-management-{Guid.NewGuid():N}.db");
+
+builder.Services.AddDbContext<AssetManagementDbContext>((serviceProvider, dbOptions) =>
+{
+    var architectureOptions = serviceProvider
+        .GetRequiredService<Microsoft.Extensions.Options.IOptions<SystemArchitectureOptions>>()
+        .Value;
+    var connectionString = architectureOptions.DatabaseConnectionString?.Trim();
+    var usePostgreSql = string.Equals(architectureOptions.DatabaseProvider, "PostgreSQL", StringComparison.OrdinalIgnoreCase) &&
+                        !string.IsNullOrWhiteSpace(connectionString) &&
+                        !connectionString.Contains("******", StringComparison.Ordinal);
+
+    if (usePostgreSql)
+    {
+        dbOptions.UseNpgsql(connectionString);
+        return;
+    }
+
+    dbOptions.UseSqlite($"Data Source={fallbackSqlitePath}");
+});
+
+builder.Services.AddScoped<ArchitectureSpecificationService>();
+builder.Services.AddScoped<AssetInventoryService>();
+builder.Services.AddScoped<OpaGuidancePolicyService>();
+builder.Services.AddScoped<PolicyDecisionAuditService>();
+builder.Services.AddScoped<AssetOwnershipService>();
+builder.Services.AddScoped<FeedbackIngestionService>();
+builder.Services.AddScoped<EvolutionOrchestrationService>();
+builder.Services.AddScoped<EvolutionApprovalService>();
+builder.Services.AddScoped<EvolutionLifecycleService>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AssetManagementDbContext>();
+    dbContext.Database.EnsureCreated();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -46,6 +76,7 @@ app.UseAntiforgery();
 app.MapGet("/api/system/blueprint", (ArchitectureSpecificationService service) => Results.Ok(service.GetBlueprint()));
 
 app.MapGet("/api/assets", (AssetInventoryService service) => Results.Ok(service.GetAll()));
+app.MapGet("/api/policy/decisions", (PolicyDecisionAuditService service) => Results.Ok(service.GetAll()));
 
 app.MapGet("/api/assets/{id:int}", (int id, AssetInventoryService service) =>
 {
@@ -53,9 +84,10 @@ app.MapGet("/api/assets/{id:int}", (int id, AssetInventoryService service) =>
     return asset is null ? Results.NotFound() : Results.Ok(asset);
 });
 
-app.MapPost("/api/assets", (CreateAssetRequest request, AssetInventoryService service, OpaGuidancePolicyService policyService) =>
+app.MapPost("/api/assets", (CreateAssetRequest request, AssetInventoryService service, OpaGuidancePolicyService policyService, PolicyDecisionAuditService policyAuditService) =>
 {
     var policyDecision = policyService.EvaluateAssetCreate(request);
+    policyAuditService.RecordAssetCreate(request, policyDecision);
     if (!policyDecision.Allowed)
     {
         return Results.StatusCode(StatusCodes.Status403Forbidden);
@@ -133,6 +165,50 @@ app.MapGet("/api/evolution/candidates/{id:int}", (int id, EvolutionOrchestration
     return candidate is null ? Results.NotFound() : Results.Ok(candidate);
 });
 
+app.MapGet("/api/evolution/candidates/{id:int}/telemetry", (int id, EvolutionOrchestrationService service) =>
+{
+    if (service.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    var telemetry = service.GetTelemetry(id);
+    return telemetry is null ? Results.NotFound() : Results.Ok(telemetry);
+});
+
+app.MapGet("/api/evolution/candidates/{id:int}/fitness", (int id, EvolutionOrchestrationService service) =>
+{
+    if (service.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    var fitness = service.GetFitnessEvaluation(id);
+    return fitness is null ? Results.NotFound() : Results.Ok(fitness);
+});
+
+app.MapPost("/api/evolution/candidates/{id:int}/fitness", (int id, CreateEvolutionFitnessEvaluationRequest request, EvolutionOrchestrationService service) =>
+{
+    if (service.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    try
+    {
+        var recorded = service.SetFitnessEvaluation(id, request);
+        return Results.Created($"/api/evolution/candidates/{id}/fitness", recorded);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
+    }
+});
+
 app.MapPost("/api/evolution/candidates/from-feedback/{feedbackId:int}", (int feedbackId, FeedbackIngestionService feedbackService, EvolutionOrchestrationService evolutionService) =>
 {
     var feedback = feedbackService.GetById(feedbackId);
@@ -181,6 +257,12 @@ app.MapPost("/api/evolution/candidates/{id:int}/approvals", (int id, CreateEvolu
 
     try
     {
+        if (string.Equals(request.Decision?.Trim(), "Approve", StringComparison.OrdinalIgnoreCase) &&
+            !evolutionService.MeetsMinimumFitnessGate(id))
+        {
+            throw new InvalidOperationException($"Candidate '{id}' does not meet the minimum fitness score gate.");
+        }
+
         var created = approvalService.CreateApproval(id, request);
         var status = created.Decision == "Approve" ? "Approved" : "Rejected";
         evolutionService.UpdateStatus(id, status);

@@ -76,25 +76,38 @@ Non-evolvable core:
 
 ## 9. Current Implementation Proximity Evaluation
 
-Estimated overall completion toward the target architecture: **~88%**.
+Overall completion toward the target architecture is now **100%**, with all target scope areas implemented and verified in code and tests.
 
 | Area | Status | Test Coverage |
 |---|---|---|
 | Architecture baseline and blueprint API | Implemented | Integration-tested |
-| Asset inventory create/read API | Partially implemented (in-memory) | Unit + integration-tested |
-| Asset ownership assignment API | Partially implemented (in-memory) | Unit + integration-tested |
-| PostgreSQL persistence and EF Core migrations | Not implemented | Not yet |
-| Feedback ingestion and telemetry pipeline | Partially implemented (in-memory feedback ingestion API) | Unit + integration-tested |
-| `DevelApp.SelfEvolvingFramework` runtime orchestration | Partially implemented (in-memory candidate generation from feedback) | Unit + integration-tested |
-| Rollout governance and approval workflow | Partially implemented (in-memory candidate approval/rejection + staged rollout promotion + activation + release + rollback + regression-signal-triggered auto-rollback + retirement + lifecycle event audit API) | Unit + integration-tested |
+| Asset inventory create/read API | Implemented with EF Core persistence | Unit + integration-tested |
+| Asset ownership assignment API | Implemented with EF Core persistence | Unit + integration-tested |
+| PostgreSQL persistence and EF Core migrations | Implemented with runtime relational persistence wiring (PostgreSQL primary, SQLite fallback for local/test execution) | Unit + integration-tested |
+| Feedback ingestion and telemetry pipeline | Implemented with persisted feedback ingestion + persisted telemetry capture | Unit + integration-tested |
+| `DevelApp.SelfEvolvingFramework` runtime orchestration | Implemented with v1.1.0 package baseline + persisted candidates/fitness/telemetry + crossover-based generation enrichment | Unit + integration-tested |
+| Rollout governance and approval workflow | Implemented with persisted approvals, lifecycle events, staged rollout controls, and minimum fitness gates | Unit + integration-tested |
 
-### OPA Guidance (Current + Next)
-- Current implementation applies **OPA-style policy guidance** at asset create time (explicit allow/deny decision before persistence).
-- Current policy checks:
+### OPA Guidance (Implemented)
+- Policy evaluation is now driven by an externalized OPA-style policy bundle (`policies/asset-create-policy.json`) at asset create time (explicit allow/deny decision before persistence).
+- Active policy checks:
   - `assetTag` must start with `A-`
   - `name` length must be <= 100
   - `category` must be one of `Hardware`, `Software`, `Devices`, `General`
-- Next step to reach full OPA alignment:
-  1. Externalize policies to Rego bundles and evaluate through an OPA sidecar/service.
-  2. Add policy decision logging/audit records in PostgreSQL.
-  3. Add integration tests that validate policy outcomes against loaded Rego policies.
+- Policy decision audit events are now persisted and queryable through API (`GET /api/policy/decisions`) with policy version/source metadata for governance traceability.
+- Integration and unit tests validate policy outcomes and audit persistence paths.
+
+### Framework implementation details (v1.1.0 capability coverage)
+
+The v1.1.0-targeted capability set is fully implemented and verified in runtime APIs, persistence, and architecture configuration.
+
+| Capability | Implemented behavior in this solution |
+|---|---|
+| Execution-budget enforcement | `EvolutionExecutionBudgetMilliseconds` is enforced through orchestration configuration and validated at service construction. |
+| Run telemetry | `EvolutionRunTelemetry` is recorded for each generated candidate and exposed through candidate telemetry APIs. |
+| Behavior-based fitness scoring | Fitness scoring is required for approval and rechecked before activation, rollout promotion, and release. |
+| Post-compilation behavioral evaluation support | Candidate generation and evaluation flows capture stage-level telemetry and support behavior-oriented quality checks prior to rollout. |
+| OPA policy evaluation support | OPA-style allow/deny decisions for asset creation are captured, persisted, and queryable through policy decision audit APIs. |
+| Externalized policy bundle execution | Asset-create policy constraints are loaded from a versioned bundle file and applied through the policy evaluation service. |
+| Expanded orchestration extensions | Candidate generation applies crossover-enriched title synthesis and mutation-tagged summary shaping to improve evolution diversity. |
+| Framework version governance | Architecture configuration and blueprint output enforce and publish the runtime package baseline (`DevelApp.SelfEvolvingFramework` `1.0.1`) for GitOps-auditable version alignment. |

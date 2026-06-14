@@ -18,6 +18,12 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
     {
         using var client = _factory.CreateClient();
         var candidateId = await CreateApprovedCandidateAsync(client);
+        var fitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidateId}/fitness", new
+        {
+            score = 0.95,
+            evaluatorId = "fitness-gate"
+        });
+        fitnessResponse.EnsureSuccessStatusCode();
 
         var activateResponse = await client.PostAsync($"/api/evolution/candidates/{candidateId}/activate", content: null);
         Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
@@ -37,6 +43,24 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
     {
         using var client = _factory.CreateClient();
         var candidateId = await CreateCandidateAsync(client);
+
+        var response = await client.PostAsync($"/api/evolution/candidates/{candidateId}/activate", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ActivateCandidate_WhenFitnessBelowThreshold_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateApprovedCandidateAsync(client);
+        var fitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidateId}/fitness", new
+        {
+            score = 0.5,
+            evaluatorId = "fitness-gate",
+            notes = "below threshold"
+        });
+        Assert.Equal(HttpStatusCode.Created, fitnessResponse.StatusCode);
 
         var response = await client.PostAsync($"/api/evolution/candidates/{candidateId}/activate", content: null);
 
@@ -120,6 +144,24 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
     }
 
     [Fact]
+    public async Task PromoteRollout_WhenFitnessFallsBelowThreshold_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateActiveCandidateAsync(client);
+        var regressedFitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidateId}/fitness", new
+        {
+            score = 0.4,
+            evaluatorId = "fitness-gate",
+            notes = "regressed after activation"
+        });
+        Assert.Equal(HttpStatusCode.Created, regressedFitnessResponse.StatusCode);
+
+        var response = await client.PostAsync($"/api/evolution/candidates/{candidateId}/rollout/promote", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
     public async Task PromoteRollout_WhenAlreadyFull_ReturnsConflict()
     {
         using var client = _factory.CreateClient();
@@ -173,6 +215,24 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
         var response = await client.PostAsync("/api/evolution/candidates/9999/release", content: null);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReleaseCandidate_WhenFitnessFallsBelowThreshold_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidateId = await CreateFullyPromotedActiveCandidateAsync(client);
+        var regressedFitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidateId}/fitness", new
+        {
+            score = 0.2,
+            evaluatorId = "fitness-gate",
+            notes = "regressed before release"
+        });
+        Assert.Equal(HttpStatusCode.Created, regressedFitnessResponse.StatusCode);
+
+        var response = await client.PostAsync($"/api/evolution/candidates/{candidateId}/release", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     [Fact]
@@ -278,6 +338,12 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
     private static async Task<int> CreateApprovedCandidateAsync(HttpClient client)
     {
         var candidateId = await CreateCandidateAsync(client);
+        var fitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidateId}/fitness", new
+        {
+            score = 0.95,
+            evaluatorId = "fitness-gate"
+        });
+        fitnessResponse.EnsureSuccessStatusCode();
         var approvalResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidateId}/approvals", new
         {
             decision = "Approve",
@@ -291,6 +357,12 @@ public class EvolutionRolloutEndpointsTests : IClassFixture<WebApplicationFactor
     private static async Task<int> CreateActiveCandidateAsync(HttpClient client)
     {
         var candidateId = await CreateApprovedCandidateAsync(client);
+        var fitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidateId}/fitness", new
+        {
+            score = 0.95,
+            evaluatorId = "fitness-gate"
+        });
+        fitnessResponse.EnsureSuccessStatusCode();
         var activateResponse = await client.PostAsync($"/api/evolution/candidates/{candidateId}/activate", content: null);
         activateResponse.EnsureSuccessStatusCode();
         return candidateId;

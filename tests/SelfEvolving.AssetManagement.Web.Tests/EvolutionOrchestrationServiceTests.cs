@@ -1,10 +1,38 @@
 using SelfEvolving.AssetManagement.Web.Models;
+using SelfEvolving.AssetManagement.Web.Configuration;
 using SelfEvolving.AssetManagement.Web.Services;
+using Microsoft.Extensions.Options;
 
 namespace SelfEvolving.AssetManagement.Web.Tests;
 
 public class EvolutionOrchestrationServiceTests
 {
+    [Fact]
+    public void Constructor_WhenExecutionBudgetIsNonPositive_ThrowsArgumentOutOfRangeException()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            EvolutionExecutionBudgetMilliseconds = 0
+        });
+
+        var action = () => new EvolutionOrchestrationService(options);
+
+        Assert.Throws<ArgumentOutOfRangeException>(action);
+    }
+
+    [Fact]
+    public void Constructor_WhenMinimumFitnessScoreIsOutOfRange_ThrowsArgumentOutOfRangeException()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            EvolutionMinimumFitnessScore = 1.5
+        });
+
+        var action = () => new EvolutionOrchestrationService(options);
+
+        Assert.Throws<ArgumentOutOfRangeException>(action);
+    }
+
     [Fact]
     public void CreateFromFeedback_GeneratesProposedCandidate()
     {
@@ -20,6 +48,30 @@ public class EvolutionOrchestrationServiceTests
     }
 
     [Fact]
+    public void CreateFromFeedback_PersistsTelemetryWithConfiguredBudget()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            EvolutionExecutionBudgetMilliseconds = 1234
+        });
+        var service = new EvolutionOrchestrationService(options);
+        var feedback = new FeedbackRecord(20, "Ops", "Telemetry", "Persist telemetry for candidate generation", DateTime.UtcNow);
+
+        var candidate = service.CreateFromFeedback(feedback);
+        var telemetry = service.GetTelemetry(candidate.Id);
+
+        Assert.NotNull(telemetry);
+        Assert.Equal(candidate.Id, telemetry!.CandidateId);
+        Assert.Equal(1234, telemetry.ExecutionBudgetMilliseconds);
+        Assert.False(telemetry.TimedOut);
+        Assert.False(telemetry.CanceledByCaller);
+        Assert.True(telemetry.TotalDurationMilliseconds >= 1);
+        Assert.True(telemetry.MutationDurationMilliseconds >= 1);
+        Assert.True(telemetry.SecurityEvaluationDurationMilliseconds >= 1);
+        Assert.True(telemetry.CompilationDurationMilliseconds >= 1);
+    }
+
+    [Fact]
     public void CreateFromFeedback_WhenAlreadyGenerated_ThrowsInvalidOperationException()
     {
         var service = new EvolutionOrchestrationService();
@@ -29,6 +81,18 @@ public class EvolutionOrchestrationServiceTests
         var action = () => service.CreateFromFeedback(feedback);
 
         Assert.Throws<InvalidOperationException>(action);
+    }
+
+    [Fact]
+    public void CreateFromFeedback_WhenPriorCandidateExists_AppliesCrossoverInTitle()
+    {
+        var service = new EvolutionOrchestrationService();
+        service.CreateFromFeedback(new FeedbackRecord(31, "UX", "Search", "Need better filters", DateTime.UtcNow));
+
+        var created = service.CreateFromFeedback(new FeedbackRecord(32, "UX", "Dashboard", "Improve KPI view", DateTime.UtcNow));
+
+        Assert.Contains(" + ", created.Title);
+        Assert.Contains("[mutated:v1.1-crossover]", created.Summary);
     }
 
     [Fact]
@@ -51,6 +115,7 @@ public class EvolutionOrchestrationServiceTests
         var feedback = new FeedbackRecord(4, "Ops", "Rollout", "Enable staged activation", DateTime.UtcNow);
         var created = service.CreateFromFeedback(feedback);
         service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
 
         var activated = service.Activate(created.Id);
 
@@ -72,12 +137,65 @@ public class EvolutionOrchestrationServiceTests
     }
 
     [Fact]
+    public void Activate_WhenFitnessIsMissing_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(21, "Ops", "Rollout", "Require quality gate", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+
+        var action = () => service.Activate(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
+
+    [Fact]
+    public void Activate_WhenFitnessBelowThreshold_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(22, "Ops", "Rollout", "Block low fitness candidate", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.5, "fitness-bot", "below threshold"));
+
+        var action = () => service.Activate(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
+
+    [Fact]
+    public void MeetsMinimumFitnessGate_WhenFitnessIsMissing_ReturnsFalse()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(25, "Ops", "Approval", "Need approval-time quality gate", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+
+        var result = service.MeetsMinimumFitnessGate(created.Id);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void MeetsMinimumFitnessGate_WhenFitnessMeetsThreshold_ReturnsTrue()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(26, "Ops", "Approval", "Approve only quality candidates", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
+
+        var result = service.MeetsMinimumFitnessGate(created.Id);
+
+        Assert.True(result);
+    }
+
+    [Fact]
     public void Rollback_WhenActive_TransitionsToRolledBack()
     {
         var service = new EvolutionOrchestrationService();
         var feedback = new FeedbackRecord(6, "Ops", "Rollout", "Rollback on regression", DateTime.UtcNow);
         var created = service.CreateFromFeedback(feedback);
         service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
         service.Activate(created.Id);
 
         var rolledBack = service.Rollback(created.Id);
@@ -105,6 +223,7 @@ public class EvolutionOrchestrationServiceTests
         var feedback = new FeedbackRecord(8, "Ops", "Rollout", "Promote to pilot", DateTime.UtcNow);
         var created = service.CreateFromFeedback(feedback);
         service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
         service.Activate(created.Id);
 
         var promoted = service.PromoteRollout(created.Id);
@@ -119,6 +238,7 @@ public class EvolutionOrchestrationServiceTests
         var feedback = new FeedbackRecord(9, "Ops", "Rollout", "Promote to full", DateTime.UtcNow);
         var created = service.CreateFromFeedback(feedback);
         service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
         service.Activate(created.Id);
         service.PromoteRollout(created.Id);
 
@@ -146,9 +266,26 @@ public class EvolutionOrchestrationServiceTests
         var feedback = new FeedbackRecord(11, "Ops", "Rollout", "No more promotions after full", DateTime.UtcNow);
         var created = service.CreateFromFeedback(feedback);
         service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
         service.Activate(created.Id);
         service.PromoteRollout(created.Id);
         service.PromoteRollout(created.Id);
+
+        var action = () => service.PromoteRollout(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
+
+    [Fact]
+    public void PromoteRollout_WhenFitnessFallsBelowThreshold_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(23, "Ops", "Rollout", "Block stage promotion on quality regression", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
+        service.Activate(created.Id);
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.4, "fitness-bot", "regressed"));
 
         var action = () => service.PromoteRollout(created.Id);
 
@@ -162,6 +299,7 @@ public class EvolutionOrchestrationServiceTests
         var feedback = new FeedbackRecord(12, "Ops", "Release", "Release successful rollout", DateTime.UtcNow);
         var created = service.CreateFromFeedback(feedback);
         service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
         service.Activate(created.Id);
         service.PromoteRollout(created.Id);
         service.PromoteRollout(created.Id);
@@ -179,6 +317,7 @@ public class EvolutionOrchestrationServiceTests
         var feedback = new FeedbackRecord(13, "Ops", "Release", "Cannot release before full rollout", DateTime.UtcNow);
         var created = service.CreateFromFeedback(feedback);
         service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
         service.Activate(created.Id);
 
         var action = () => service.Release(created.Id);
@@ -199,12 +338,31 @@ public class EvolutionOrchestrationServiceTests
     }
 
     [Fact]
+    public void Release_WhenFitnessFallsBelowThreshold_ThrowsInvalidOperationException()
+    {
+        var service = new EvolutionOrchestrationService();
+        var feedback = new FeedbackRecord(24, "Ops", "Release", "Do not release regressed candidate", DateTime.UtcNow);
+        var created = service.CreateFromFeedback(feedback);
+        service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
+        service.Activate(created.Id);
+        service.PromoteRollout(created.Id);
+        service.PromoteRollout(created.Id);
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.3, "fitness-bot", "regressed before release"));
+
+        var action = () => service.Release(created.Id);
+
+        Assert.Throws<InvalidOperationException>(action);
+    }
+
+    [Fact]
     public void AutoRollbackOnRegression_WhenActive_TransitionsToRolledBack()
     {
         var service = new EvolutionOrchestrationService();
         var feedback = new FeedbackRecord(15, "Ops", "Rollback", "Regression detected in pilot", DateTime.UtcNow);
         var created = service.CreateFromFeedback(feedback);
         service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
         service.Activate(created.Id);
 
         var rolledBack = service.AutoRollbackOnRegression(created.Id);
@@ -232,6 +390,7 @@ public class EvolutionOrchestrationServiceTests
         var feedback = new FeedbackRecord(17, "Ops", "Retire", "Retire released candidate", DateTime.UtcNow);
         var created = service.CreateFromFeedback(feedback);
         service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
         service.Activate(created.Id);
         service.PromoteRollout(created.Id);
         service.PromoteRollout(created.Id);
@@ -249,6 +408,7 @@ public class EvolutionOrchestrationServiceTests
         var feedback = new FeedbackRecord(18, "Ops", "Retire", "Retire rolled back candidate", DateTime.UtcNow);
         var created = service.CreateFromFeedback(feedback);
         service.UpdateStatus(created.Id, "Approved");
+        service.SetFitnessEvaluation(created.Id, new CreateEvolutionFitnessEvaluationRequest(0.9, "fitness-bot", null));
         service.Activate(created.Id);
         service.Rollback(created.Id);
 

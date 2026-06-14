@@ -80,6 +80,36 @@ public class AssetEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task PolicyDecisionAudit_WhenAssetsAreEvaluated_ReturnsAllowAndDenyDecisions()
+    {
+        using var client = _factory.CreateClient();
+
+        var allowed = await client.PostAsJsonAsync("/api/assets", new
+        {
+            assetTag = "A-777",
+            name = "Policy Allowed Asset",
+            category = "Hardware"
+        });
+        Assert.Equal(HttpStatusCode.Created, allowed.StatusCode);
+
+        var denied = await client.PostAsJsonAsync("/api/assets", new
+        {
+            assetTag = "X-777",
+            name = "Policy Denied Asset",
+            category = "Hardware"
+        });
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+
+        var auditResponse = await client.GetAsync("/api/policy/decisions");
+        auditResponse.EnsureSuccessStatusCode();
+        var decisions = await auditResponse.Content.ReadFromJsonAsync<List<PolicyDecisionAuditResponse>>();
+
+        Assert.NotNull(decisions);
+        Assert.Contains(decisions!, x => x.Operation == "AssetCreate" && x.AssetTag == "A-777" && x.Allowed);
+        Assert.Contains(decisions!, x => x.Operation == "AssetCreate" && x.AssetTag == "X-777" && !x.Allowed && x.DenyReasons.Count > 0);
+    }
+
+    [Fact]
     public async Task AssignOwner_WhenAssetExists_ReturnsCreatedAndListIncludesActiveOwner()
     {
         using var client = _factory.CreateClient();
@@ -139,4 +169,14 @@ public class AssetEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         string OwnerName,
         DateTime AssignedUtc,
         bool IsActive);
+
+    private sealed record PolicyDecisionAuditResponse(
+        int Id,
+        string Operation,
+        bool Allowed,
+        string AssetTag,
+        string Name,
+        string Category,
+        IReadOnlyList<string> DenyReasons,
+        DateTime EvaluatedUtc);
 }

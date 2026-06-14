@@ -18,6 +18,13 @@ public class EvolutionApprovalEndpointsTests : IClassFixture<WebApplicationFacto
     {
         using var client = _factory.CreateClient();
         var candidate = await CreateCandidateAsync(client);
+        var fitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/fitness", new
+        {
+            score = 0.95,
+            evaluatorId = "fitness-gate",
+            notes = "meets approval gate"
+        });
+        fitnessResponse.EnsureSuccessStatusCode();
 
         var approvalResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/approvals", new
         {
@@ -93,6 +100,64 @@ public class EvolutionApprovalEndpointsTests : IClassFixture<WebApplicationFacto
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ApproveCandidate_WhenFitnessMissing_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidate = await CreateCandidateAsync(client);
+
+        var response = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/approvals", new
+        {
+            decision = "Approve",
+            reviewerId = "approver-1"
+        });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ApproveCandidate_WhenFitnessBelowThreshold_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+        var candidate = await CreateCandidateAsync(client);
+        var fitnessResponse = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/fitness", new
+        {
+            score = 0.4,
+            evaluatorId = "fitness-gate",
+            notes = "below threshold"
+        });
+        fitnessResponse.EnsureSuccessStatusCode();
+
+        var response = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/approvals", new
+        {
+            decision = "Approve",
+            reviewerId = "approver-1"
+        });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RejectCandidate_WhenFitnessMissing_ReturnsCreatedAndUpdatesCandidateStatus()
+    {
+        using var client = _factory.CreateClient();
+        var candidate = await CreateCandidateAsync(client);
+
+        var response = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/approvals", new
+        {
+            decision = "Reject",
+            reviewerId = "approver-1",
+            notes = "not fit for rollout"
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var candidatesResponse = await client.GetAsync("/api/evolution/candidates");
+        candidatesResponse.EnsureSuccessStatusCode();
+        var candidates = await candidatesResponse.Content.ReadFromJsonAsync<List<CandidateResponse>>();
+        Assert.NotNull(candidates);
+        Assert.Equal("Rejected", candidates!.Single(x => x.Id == candidate.Id).Status);
     }
 
     private static async Task<CandidateResponse> CreateCandidateAsync(HttpClient client)
