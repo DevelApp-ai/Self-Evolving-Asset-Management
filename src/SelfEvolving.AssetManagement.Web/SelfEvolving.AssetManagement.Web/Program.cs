@@ -187,6 +187,32 @@ app.MapGet("/api/evolution/candidates/{id:int}/fitness", (int id, EvolutionOrche
     return fitness is null ? Results.NotFound() : Results.Ok(fitness);
 });
 
+app.MapGet("/api/evolution/candidates/{id:int}/agent-runs", (int id, EvolutionOrchestrationService service) =>
+{
+    if (service.GetById(id) is null)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.Ok(service.GetAgentRunsByCandidateId(id));
+});
+
+app.MapGet("/api/evolution/agent-runs/{runId:int}", (int runId, EvolutionOrchestrationService service) =>
+{
+    var run = service.GetAgentRunById(runId);
+    return run is null ? Results.NotFound() : Results.Ok(run);
+});
+
+app.MapGet("/api/evolution/agent-runs/{runId:int}/steps", (int runId, EvolutionOrchestrationService service) =>
+{
+    if (service.GetAgentRunById(runId) is null)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.Ok(service.GetAgentRunSteps(runId));
+});
+
 app.MapPost("/api/evolution/candidates/{id:int}/fitness", (int id, CreateEvolutionFitnessEvaluationRequest request, EvolutionOrchestrationService service) =>
 {
     if (service.GetById(id) is null)
@@ -220,6 +246,25 @@ app.MapPost("/api/evolution/candidates/from-feedback/{feedbackId:int}", (int fee
     try
     {
         var created = evolutionService.CreateFromFeedback(feedback);
+        return Results.Created($"/api/evolution/candidates/{created.Id}", created);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
+    }
+});
+
+app.MapPost("/api/evolution/candidates/from-feedback/{feedbackId:int}/multi-agent", (int feedbackId, FeedbackIngestionService feedbackService, EvolutionOrchestrationService evolutionService) =>
+{
+    var feedback = feedbackService.GetById(feedbackId);
+    if (feedback is null)
+    {
+        return Results.NotFound();
+    }
+
+    try
+    {
+        var created = evolutionService.CreateFromFeedbackMultiAgent(feedback);
         return Results.Created($"/api/evolution/candidates/{created.Id}", created);
     }
     catch (InvalidOperationException ex)
@@ -266,7 +311,8 @@ app.MapPost("/api/evolution/candidates/{id:int}/approvals", (int id, CreateEvolu
         var created = approvalService.CreateApproval(id, request);
         var status = created.Decision == "Approve" ? "Approved" : "Rejected";
         evolutionService.UpdateStatus(id, status);
-        lifecycleService.Record(id, status, created.ReviewerId, created.Notes);
+        var lifecycleEvent = lifecycleService.Record(id, status, created.ReviewerId, created.Notes);
+        evolutionService.LinkLatestRunToLifecycleEvent(id, lifecycleEvent.Id, status);
         return Results.Created($"/api/evolution/candidates/{id}/approvals/{created.Id}", created);
     }
     catch (ArgumentException ex)
@@ -289,7 +335,8 @@ app.MapPost("/api/evolution/candidates/{id:int}/activate", (int id, EvolutionOrc
     try
     {
         var activated = evolutionService.Activate(id);
-        lifecycleService.Record(id, "Activated", "system", null);
+        var lifecycleEvent = lifecycleService.Record(id, "Activated", "system", null);
+        evolutionService.LinkLatestRunToLifecycleEvent(id, lifecycleEvent.Id, "Activated");
         return Results.Ok(activated);
     }
     catch (InvalidOperationException ex)
@@ -308,7 +355,8 @@ app.MapPost("/api/evolution/candidates/{id:int}/rollout/promote", (int id, Evolu
     try
     {
         var promoted = evolutionService.PromoteRollout(id);
-        lifecycleService.Record(id, $"PromotedTo{promoted.RolloutStage}", "system", null);
+        var lifecycleEvent = lifecycleService.Record(id, $"PromotedTo{promoted.RolloutStage}", "system", null);
+        evolutionService.LinkLatestRunToLifecycleEvent(id, lifecycleEvent.Id, $"PromotedTo{promoted.RolloutStage}");
         return Results.Ok(promoted);
     }
     catch (InvalidOperationException ex)
@@ -327,7 +375,8 @@ app.MapPost("/api/evolution/candidates/{id:int}/rollback", (int id, EvolutionOrc
     try
     {
         var rolledBack = evolutionService.Rollback(id);
-        lifecycleService.Record(id, "RolledBack", "system", null);
+        var lifecycleEvent = lifecycleService.Record(id, "RolledBack", "system", null);
+        evolutionService.LinkLatestRunToLifecycleEvent(id, lifecycleEvent.Id, "RolledBack");
         return Results.Ok(rolledBack);
     }
     catch (InvalidOperationException ex)
@@ -346,7 +395,8 @@ app.MapPost("/api/evolution/candidates/{id:int}/regression-signal", (int id, str
     try
     {
         var rolledBack = evolutionService.AutoRollbackOnRegression(id);
-        lifecycleService.Record(id, "AutoRolledBack", "system", reason);
+        var lifecycleEvent = lifecycleService.Record(id, "AutoRolledBack", "system", reason);
+        evolutionService.LinkLatestRunToLifecycleEvent(id, lifecycleEvent.Id, "AutoRolledBack");
         return Results.Ok(rolledBack);
     }
     catch (InvalidOperationException ex)
@@ -365,7 +415,8 @@ app.MapPost("/api/evolution/candidates/{id:int}/release", (int id, EvolutionOrch
     try
     {
         var released = evolutionService.Release(id);
-        lifecycleService.Record(id, "Released", "system", null);
+        var lifecycleEvent = lifecycleService.Record(id, "Released", "system", null);
+        evolutionService.LinkLatestRunToLifecycleEvent(id, lifecycleEvent.Id, "Released");
         return Results.Ok(released);
     }
     catch (InvalidOperationException ex)
@@ -384,7 +435,8 @@ app.MapPost("/api/evolution/candidates/{id:int}/retire", (int id, EvolutionOrche
     try
     {
         var retired = evolutionService.Retire(id);
-        lifecycleService.Record(id, "Retired", "system", null);
+        var lifecycleEvent = lifecycleService.Record(id, "Retired", "system", null);
+        evolutionService.LinkLatestRunToLifecycleEvent(id, lifecycleEvent.Id, "Retired");
         return Results.Ok(retired);
     }
     catch (InvalidOperationException ex)

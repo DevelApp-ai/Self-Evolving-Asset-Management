@@ -19,9 +19,9 @@ public sealed class ArchitectureSpecificationService(IOptions<SystemArchitecture
             throw new InvalidOperationException("SystemArchitecture:EvolutionFrameworkPackage must be DevelApp.SelfEvolvingFramework.");
         }
 
-        if (!string.Equals(_options.EvolutionFrameworkVersion, "1.0.1", StringComparison.Ordinal))
+        if (!string.Equals(_options.EvolutionFrameworkVersion, "1.2.0", StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("SystemArchitecture:EvolutionFrameworkVersion must be 1.0.1.");
+            throw new InvalidOperationException("SystemArchitecture:EvolutionFrameworkVersion must be 1.2.0.");
         }
 
         return new ArchitectureBlueprint(
@@ -30,7 +30,12 @@ public sealed class ArchitectureSpecificationService(IOptions<SystemArchitecture
             _options.DatabaseProvider,
             _options.BlazorWebAssemblyEnabled,
             _options.BlazorServerEnabled,
-            !string.IsNullOrWhiteSpace(_options.DatabaseConnectionString));
+            !string.IsNullOrWhiteSpace(_options.DatabaseConnectionString),
+            _options.MultiAgentEnabled,
+            _options.MultiAgentMaxParallelAgents,
+            _options.MultiAgentRunTimeoutMs,
+            _options.MultiAgentSafetyBlockThreshold,
+            _options.MultiAgentRequireHumanApproval);
     }
 }
 
@@ -40,4 +45,9 @@ public sealed record ArchitectureBlueprint(
     string DatabaseProvider,
     bool BlazorWebAssemblyEnabled,
     bool BlazorServerEnabled,
-    bool HasDatabaseConnectionString);
+    bool HasDatabaseConnectionString,
+    bool MultiAgentEnabled,
+    int MultiAgentMaxParallelAgents,
+    int MultiAgentRunTimeoutMs,
+    double MultiAgentSafetyBlockThreshold,
+    bool MultiAgentRequireHumanApproval);

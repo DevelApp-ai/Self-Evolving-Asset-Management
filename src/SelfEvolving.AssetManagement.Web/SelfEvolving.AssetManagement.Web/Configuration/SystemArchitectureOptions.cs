@@ -6,7 +6,7 @@ public sealed class SystemArchitectureOptions
 
     public string EvolutionFrameworkPackage { get; set; } = "DevelApp.SelfEvolvingFramework";
 
-    public string EvolutionFrameworkVersion { get; set; } = "1.0.1";
+    public string EvolutionFrameworkVersion { get; set; } = "1.2.0";
 
     public string DatabaseProvider { get; set; } = "PostgreSQL";
 
@@ -19,6 +19,16 @@ public sealed class SystemArchitectureOptions
     public int EvolutionExecutionBudgetMilliseconds { get; set; } = 30000;
 
     public double EvolutionMinimumFitnessScore { get; set; } = 0.8;
+
+    public bool MultiAgentEnabled { get; set; }
+
+    public int MultiAgentMaxParallelAgents { get; set; } = 6;
+
+    public int MultiAgentRunTimeoutMs { get; set; } = 5000;
+
+    public double MultiAgentSafetyBlockThreshold { get; set; } = 0.6;
+
+    public bool MultiAgentRequireHumanApproval { get; set; } = true;
 
     public string OpaPolicyBundlePath { get; set; } = "policies/asset-create-policy.json";
 
