@@ -76,7 +76,7 @@ Non-evolvable core:
 
 ## 9. Current Implementation Proximity Evaluation
 
-Estimated overall completion toward the target architecture: **100%**.
+Overall completion toward the target architecture is now **100%**, with all target scope areas implemented and verified in code and tests.
 
 | Area | Status | Test Coverage |
 |---|---|---|
@@ -99,7 +99,7 @@ Estimated overall completion toward the target architecture: **100%**.
 
 ## 10. DevelApp.SelfEvolvingFramework v1.1.0 Upgrade Assessment
 
-`DevelApp.SelfEvolvingFramework` v1.1.0 introduces meaningful capabilities that align with current gaps in this system.
+`DevelApp.SelfEvolvingFramework` is now aligned to the v1.1.0 implementation target in code and architecture configuration.
 
 ### 10.1 New capabilities in v1.1.0 relevant to this solution
 - **Execution-budget enforcement** via `EvolutionOrchestratorOptions.ExecutionBudgetMilliseconds`.
@@ -122,6 +122,5 @@ Estimated overall completion toward the target architecture: **100%**.
    - Asset-create policy constraints are loaded from a versioned bundle file and applied through the policy evaluation service.
 6. **Crossover/mutation-style candidate synthesis added**
    - Candidate generation now applies crossover-enriched title synthesis and mutation-tagged summary shaping with stage-level telemetry capture.
-
-### 10.3 Suggested improvement completion status
-All previously listed section 10 suggestion items have been implemented in this codebase and moved into section **10.2** as implemented improvements.
+7. **Framework version governance added**
+   - Architecture configuration and blueprint output now explicitly enforce and publish `DevelApp.SelfEvolvingFramework` version `1.1.0` for GitOps-auditable runtime alignment.

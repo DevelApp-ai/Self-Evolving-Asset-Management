@@ -19,8 +19,14 @@ public sealed class ArchitectureSpecificationService(IOptions<SystemArchitecture
             throw new InvalidOperationException("SystemArchitecture:EvolutionFrameworkPackage must be DevelApp.SelfEvolvingFramework.");
         }
 
+        if (!string.Equals(_options.EvolutionFrameworkVersion, "1.1.0", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("SystemArchitecture:EvolutionFrameworkVersion must be 1.1.0.");
+        }
+
         return new ArchitectureBlueprint(
             _options.EvolutionFrameworkPackage,
+            _options.EvolutionFrameworkVersion,
             _options.DatabaseProvider,
             _options.BlazorWebAssemblyEnabled,
             _options.BlazorServerEnabled,
@@ -30,6 +36,7 @@ public sealed class ArchitectureSpecificationService(IOptions<SystemArchitecture
 
 public sealed record ArchitectureBlueprint(
     string EvolutionFrameworkPackage,
+    string EvolutionFrameworkVersion,
     string DatabaseProvider,
     bool BlazorWebAssemblyEnabled,
     bool BlazorServerEnabled,
