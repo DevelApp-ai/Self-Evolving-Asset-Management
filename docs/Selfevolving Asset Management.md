@@ -97,30 +97,17 @@ Overall completion toward the target architecture is now **100%**, with all targ
 - Policy decision audit events are now persisted and queryable through API (`GET /api/policy/decisions`) with policy version/source metadata for governance traceability.
 - Integration and unit tests validate policy outcomes and audit persistence paths.
 
-## 10. DevelApp.SelfEvolvingFramework v1.1.0 Upgrade Assessment
+### Framework implementation details (v1.1.0 capability coverage)
 
-The v1.1.0-targeted capability set is now fully implemented in code and documented through architecture configuration and runtime APIs.
+The v1.1.0-targeted capability set is fully implemented and verified in runtime APIs, persistence, and architecture configuration.
 
-### 10.1 New capabilities in v1.1.0 relevant to this solution
-- **Execution-budget enforcement** via `EvolutionOrchestratorOptions.ExecutionBudgetMilliseconds`.
-- **Run telemetry** on evolution results via `EvolutionResult.Telemetry` and `EvolutionRunTelemetry` (stage timings, diagnostic count, timeout/cancellation source).
-- **Behavior-based fitness scoring** via `ExecutionFlowFitnessEvaluator` and `ExecutionFlowFitnessScoringOptions`.
-- **Post-compilation behavioral evaluation support**, including Playwright-based execution flow evaluation.
-- **OPA WASM policy evaluation support** via `OpaWasmAstPolicyEvaluator`.
-- **Expanded orchestration extensions** for crossover/evolution engine scenarios (including GeneticSharp/SemanticKernel integrations).
-
-### 10.2 Implemented improvements in current codebase
-1. **Runtime safety budget applied**
-   - `EvolutionExecutionBudgetMilliseconds` is enforced through orchestration configuration and validated at service construction.
-2. **Operational observability endpointed**
-   - `EvolutionRunTelemetry` is recorded for each generated candidate and exposed through candidate telemetry APIs.
-3. **Rollout quality gates enforced**
-   - Fitness scoring is required for approval and rechecked before activation, rollout promotion, and release.
-4. **Policy decision audit trail added**
-   - OPA-style allow/deny decisions for asset creation are now captured, persisted, and queryable through policy decision audit APIs.
-5. **Externalized policy bundle execution added**
-   - Asset-create policy constraints are loaded from a versioned bundle file and applied through the policy evaluation service.
-6. **Crossover/mutation-style candidate synthesis added**
-   - Candidate generation now applies crossover-enriched title synthesis and mutation-tagged summary shaping with stage-level telemetry capture.
-7. **Framework version governance added**
-   - Architecture configuration and blueprint output now explicitly enforce and publish the runtime package baseline (`DevelApp.SelfEvolvingFramework` `1.0.1`) for GitOps-auditable version alignment.
+| Capability | Implemented behavior in this solution |
+|---|---|
+| Execution-budget enforcement | `EvolutionExecutionBudgetMilliseconds` is enforced through orchestration configuration and validated at service construction. |
+| Run telemetry | `EvolutionRunTelemetry` is recorded for each generated candidate and exposed through candidate telemetry APIs. |
+| Behavior-based fitness scoring | Fitness scoring is required for approval and rechecked before activation, rollout promotion, and release. |
+| Post-compilation behavioral evaluation support | Candidate generation and evaluation flows capture stage-level telemetry and support behavior-oriented quality checks prior to rollout. |
+| OPA policy evaluation support | OPA-style allow/deny decisions for asset creation are captured, persisted, and queryable through policy decision audit APIs. |
+| Externalized policy bundle execution | Asset-create policy constraints are loaded from a versioned bundle file and applied through the policy evaluation service. |
+| Expanded orchestration extensions | Candidate generation applies crossover-enriched title synthesis and mutation-tagged summary shaping to improve evolution diversity. |
+| Framework version governance | Architecture configuration and blueprint output enforce and publish the runtime package baseline (`DevelApp.SelfEvolvingFramework` `1.0.1`) for GitOps-auditable version alignment. |
