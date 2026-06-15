@@ -63,6 +63,51 @@ public sealed class EvolutionFitnessEntity
     public DateTime EvaluatedUtc { get; set; }
 }
 
+public sealed class EvolutionAgentRunEntity
+{
+    public int Id { get; set; }
+    public int CandidateId { get; set; }
+    public int SourceFeedbackId { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string FrameworkVersion { get; set; } = string.Empty;
+    public DateTime StartedUtc { get; set; }
+    public DateTime? CompletedUtc { get; set; }
+}
+
+public sealed class EvolutionAgentStepEntity
+{
+    public int Id { get; set; }
+    public int RunId { get; set; }
+    public string AgentType { get; set; } = string.Empty;
+    public string InputHash { get; set; } = string.Empty;
+    public string OutputSummary { get; set; } = string.Empty;
+    public int LatencyMilliseconds { get; set; }
+    public int TokenCost { get; set; }
+    public int DiagnosticCount { get; set; }
+    public DateTime RecordedUtc { get; set; }
+}
+
+public sealed class EvolutionAgentDecisionEntity
+{
+    public int Id { get; set; }
+    public int RunId { get; set; }
+    public string Recommendation { get; set; } = string.Empty;
+    public double Confidence { get; set; }
+    public string Rationale { get; set; } = string.Empty;
+    public bool IsBlocking { get; set; }
+    public DateTime RecordedUtc { get; set; }
+}
+
+public sealed class EvolutionRunAuditLinkEntity
+{
+    public int Id { get; set; }
+    public int RunId { get; set; }
+    public int CandidateId { get; set; }
+    public int? LifecycleEventId { get; set; }
+    public string RelationType { get; set; } = string.Empty;
+    public DateTime LinkedUtc { get; set; }
+}
+
 public sealed class EvolutionApprovalEntity
 {
     public int Id { get; set; }

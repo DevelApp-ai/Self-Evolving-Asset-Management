@@ -12,6 +12,7 @@ This repository now includes an initial implementation of the technical design i
 ## Build and test
 
 ```bash
+dotnet nuget add source "https://nuget.pkg.github.com/DevelApp-ai/index.json" --name github --username "<github-username>" --password "<github-pat-with-read:packages>" --store-password-in-clear-text
 dotnet restore SelfEvolving.AssetManagement.slnx
 dotnet build SelfEvolving.AssetManagement.slnx -c Release
 dotnet test SelfEvolving.AssetManagement.slnx -c Release

@@ -25,11 +25,16 @@ public class ArchitectureBlueprintEndpointTests : IClassFixture<WebApplicationFa
 
         Assert.NotNull(blueprint);
         Assert.Equal("DevelApp.SelfEvolvingFramework", blueprint!.EvolutionFrameworkPackage);
-        Assert.Equal("1.0.1", blueprint.EvolutionFrameworkVersion);
+        Assert.Equal("1.2.0", blueprint.EvolutionFrameworkVersion);
         Assert.Equal("PostgreSQL", blueprint.DatabaseProvider);
         Assert.True(blueprint.BlazorWebAssemblyEnabled);
         Assert.True(blueprint.BlazorServerEnabled);
         Assert.True(blueprint.HasDatabaseConnectionString);
+        Assert.False(blueprint.MultiAgentEnabled);
+        Assert.Equal(6, blueprint.MultiAgentMaxParallelAgents);
+        Assert.Equal(5000, blueprint.MultiAgentRunTimeoutMs);
+        Assert.Equal(0.6, blueprint.MultiAgentSafetyBlockThreshold);
+        Assert.True(blueprint.MultiAgentRequireHumanApproval);
     }
 
     private sealed record ArchitectureBlueprintResponse(
@@ -38,5 +43,10 @@ public class ArchitectureBlueprintEndpointTests : IClassFixture<WebApplicationFa
         string DatabaseProvider,
         bool BlazorWebAssemblyEnabled,
         bool BlazorServerEnabled,
-        bool HasDatabaseConnectionString);
+        bool HasDatabaseConnectionString,
+        bool MultiAgentEnabled,
+        int MultiAgentMaxParallelAgents,
+        int MultiAgentRunTimeoutMs,
+        double MultiAgentSafetyBlockThreshold,
+        bool MultiAgentRequireHumanApproval);
 }

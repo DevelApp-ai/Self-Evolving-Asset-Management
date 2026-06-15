@@ -34,6 +34,45 @@ public class EvolutionOrchestrationServiceTests
     }
 
     [Fact]
+    public void Constructor_WhenMultiAgentParallelismIsNonPositive_ThrowsArgumentOutOfRangeException()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            MultiAgentMaxParallelAgents = 0
+        });
+
+        var action = () => new EvolutionOrchestrationService(options);
+
+        Assert.Throws<ArgumentOutOfRangeException>(action);
+    }
+
+    [Fact]
+    public void Constructor_WhenMultiAgentTimeoutIsNonPositive_ThrowsArgumentOutOfRangeException()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            MultiAgentRunTimeoutMs = 0
+        });
+
+        var action = () => new EvolutionOrchestrationService(options);
+
+        Assert.Throws<ArgumentOutOfRangeException>(action);
+    }
+
+    [Fact]
+    public void Constructor_WhenMultiAgentSafetyThresholdIsOutOfRange_ThrowsArgumentOutOfRangeException()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            MultiAgentSafetyBlockThreshold = 1.2
+        });
+
+        var action = () => new EvolutionOrchestrationService(options);
+
+        Assert.Throws<ArgumentOutOfRangeException>(action);
+    }
+
+    [Fact]
     public void CreateFromFeedback_GeneratesProposedCandidate()
     {
         var service = new EvolutionOrchestrationService();
@@ -45,6 +84,63 @@ public class EvolutionOrchestrationServiceTests
         Assert.Equal("Proposed", candidate.Status);
         Assert.Contains("Search", candidate.Title);
         Assert.Single(service.GetAll());
+    }
+
+    [Fact]
+    public void CreateFromFeedback_WhenMultiAgentEnabled_GeneratesAgentRunAndSteps()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            MultiAgentEnabled = true,
+            EvolutionFrameworkVersion = "1.2.0"
+        });
+        var service = new EvolutionOrchestrationService(options);
+        var feedback = new FeedbackRecord(201, "UX", "Search", "Improve search relevance and discoverability", DateTime.UtcNow);
+
+        var candidate = service.CreateFromFeedback(feedback);
+
+        Assert.Contains("[multi-agent:v1.2", candidate.Summary);
+        var runs = service.GetAgentRunsByCandidateId(candidate.Id);
+        Assert.Single(runs);
+        Assert.Equal("Completed", runs[0].Status);
+        var steps = service.GetAgentRunSteps(runs[0].Id);
+        Assert.True(steps.Count >= 5);
+        var decisions = service.GetAgentRunDecisions(runs[0].Id);
+        Assert.True(decisions.Count >= 3);
+    }
+
+    [Fact]
+    public void CreateFromFeedbackMultiAgent_WhenSafetyBlocks_ThrowsInvalidOperationException()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            MultiAgentEnabled = true,
+            MultiAgentSafetyBlockThreshold = 0.5
+        });
+        var service = new EvolutionOrchestrationService(options);
+        var feedback = new FeedbackRecord(202, "Security", "Auth", "Please bypass auth checks for speed", DateTime.UtcNow);
+
+        var action = () => service.CreateFromFeedbackMultiAgent(feedback);
+
+        Assert.Throws<InvalidOperationException>(action);
+        Assert.Empty(service.GetAll());
+    }
+
+    [Fact]
+    public void CreateFromFeedback_WhenMultiAgentTimesOut_FallsBackToSinglePath()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            MultiAgentEnabled = true,
+            MultiAgentRunTimeoutMs = 20
+        });
+        var service = new EvolutionOrchestrationService(options);
+        var feedback = new FeedbackRecord(203, "Ops", "Telemetry", "Capture mutation telemetry", DateTime.UtcNow);
+
+        var candidate = service.CreateFromFeedback(feedback);
+
+        Assert.Contains("[mutated:v1.1-crossover]", candidate.Summary);
+        Assert.Empty(service.GetAgentRunsByCandidateId(candidate.Id));
     }
 
     [Fact]
