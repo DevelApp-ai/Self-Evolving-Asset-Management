@@ -28,6 +28,7 @@ public sealed class EvolutionOrchestrationService
     private readonly double _minimumFitnessScore;
     private readonly string _frameworkVersion;
     private readonly bool _multiAgentEnabled;
+    private readonly string _multiAgentSystemMode;
     private readonly int _multiAgentMaxParallelAgents;
     private readonly int _multiAgentRunTimeoutMs;
     private readonly double _multiAgentSafetyBlockThreshold;
@@ -46,6 +47,7 @@ public sealed class EvolutionOrchestrationService
         _minimumFitnessScore = config.EvolutionMinimumFitnessScore;
         _frameworkVersion = config.EvolutionFrameworkVersion;
         _multiAgentEnabled = config.MultiAgentEnabled;
+        _multiAgentSystemMode = config.MultiAgentSystemMode?.Trim() ?? "Cloud";
         _multiAgentMaxParallelAgents = config.MultiAgentMaxParallelAgents;
         _multiAgentRunTimeoutMs = config.MultiAgentRunTimeoutMs;
         _multiAgentSafetyBlockThreshold = config.MultiAgentSafetyBlockThreshold;
@@ -74,6 +76,12 @@ public sealed class EvolutionOrchestrationService
         if (_multiAgentSafetyBlockThreshold is < 0 or > 1)
         {
             throw new ArgumentOutOfRangeException(nameof(options), "Multi-agent safety block threshold must be between 0 and 1.");
+        }
+
+        if (!string.Equals(_multiAgentSystemMode, "Cloud", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(_multiAgentSystemMode, "Local", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Multi-agent system mode must be Cloud or Local.", nameof(options));
         }
     }
 
@@ -484,7 +492,7 @@ public sealed class EvolutionOrchestrationService
 
         var stepRequests = new List<(string AgentType, string OutputSummary, int LatencyMilliseconds, int TokenCost, int DiagnosticCount)>
         {
-            ("CoordinatorAgent", $"Routed to {Math.Min(_multiAgentMaxParallelAgents, 5)} specialist agents", 15, 32, 0),
+            ("CoordinatorAgent", $"Routed to {Math.Min(_multiAgentMaxParallelAgents, 5)} specialist agents on {GetMultiAgentSystemLabel()} runtime", 15, 32, 0),
             ("CandidateSynthesisAgent", "Generated candidate title and summary strategy", 42, 120, 0),
             ("PolicySafetyAgent", "Validated policy and risk envelope", 35, 95, 0),
             ("FitnessEvaluationAgent", "Estimated candidate fitness and confidence", 27, 80, 0),
@@ -522,7 +530,7 @@ public sealed class EvolutionOrchestrationService
             throw new InvalidOperationException("Multi-agent policy/safety agent denied candidate generation.");
         }
 
-        var synthesis = SynthesizeCandidateMultiAgent(feedback, fitnessDecision.Confidence);
+        var synthesis = SynthesizeCandidateMultiAgent(feedback, fitnessDecision.Confidence, _multiAgentSystemMode);
         var candidate = CreateFromFeedbackSinglePathCore(feedback, synthesis.Title, synthesis.Summary, startedUtc, estimatedLatency);
 
         var minFitness = Math.Max(_minimumFitnessScore, Math.Min(1, fitnessDecision.Confidence));
@@ -835,16 +843,19 @@ public sealed class EvolutionOrchestrationService
         return (crossoverTitle, evolvedSummary);
     }
 
-    private (string Title, string Summary) SynthesizeCandidateMultiAgent(FeedbackRecord feedback, double confidence)
+    private (string Title, string Summary) SynthesizeCandidateMultiAgent(FeedbackRecord feedback, double confidence, string multiAgentSystemMode)
     {
         var previousTitle = GetAll().FirstOrDefault()?.Title;
         var baseTitle = $"Improve: {feedback.Subject}";
         var coordinatorTitle = string.IsNullOrWhiteSpace(previousTitle)
             ? baseTitle
             : $"{baseTitle} + {ExtractSuffix(previousTitle)}";
-        var summary = $"{feedback.Message.Trim()} [multi-agent:v1.2 confidence:{confidence:F2}]";
+        var summary = $"{feedback.Message.Trim()} [multi-agent:v1.3 mode:{multiAgentSystemMode.ToLowerInvariant()} confidence:{confidence:F2}]";
         return (coordinatorTitle, summary);
     }
+
+    private string GetMultiAgentSystemLabel() =>
+        string.Equals(_multiAgentSystemMode, "Local", StringComparison.OrdinalIgnoreCase) ? "local" : "cloud";
 
     private static string ExtractSuffix(string title)
     {

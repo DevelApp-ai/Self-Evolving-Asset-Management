@@ -19,9 +19,15 @@ public sealed class ArchitectureSpecificationService(IOptions<SystemArchitecture
             throw new InvalidOperationException("SystemArchitecture:EvolutionFrameworkPackage must be DevelApp.SelfEvolvingFramework.");
         }
 
-        if (!string.Equals(_options.EvolutionFrameworkVersion, "1.2.0", StringComparison.Ordinal))
+        if (!string.Equals(_options.EvolutionFrameworkVersion, "1.3.0", StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("SystemArchitecture:EvolutionFrameworkVersion must be 1.2.0.");
+            throw new InvalidOperationException("SystemArchitecture:EvolutionFrameworkVersion must be 1.3.0.");
+        }
+
+        if (!string.Equals(_options.MultiAgentSystemMode, "Cloud", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(_options.MultiAgentSystemMode, "Local", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("SystemArchitecture:MultiAgentSystemMode must be Cloud or Local.");
         }
 
         return new ArchitectureBlueprint(
@@ -32,6 +38,7 @@ public sealed class ArchitectureSpecificationService(IOptions<SystemArchitecture
             _options.BlazorServerEnabled,
             !string.IsNullOrWhiteSpace(_options.DatabaseConnectionString),
             _options.MultiAgentEnabled,
+            _options.MultiAgentSystemMode,
             _options.MultiAgentMaxParallelAgents,
             _options.MultiAgentRunTimeoutMs,
             _options.MultiAgentSafetyBlockThreshold,
@@ -47,6 +54,7 @@ public sealed record ArchitectureBlueprint(
     bool BlazorServerEnabled,
     bool HasDatabaseConnectionString,
     bool MultiAgentEnabled,
+    string MultiAgentSystemMode,
     int MultiAgentMaxParallelAgents,
     int MultiAgentRunTimeoutMs,
     double MultiAgentSafetyBlockThreshold,

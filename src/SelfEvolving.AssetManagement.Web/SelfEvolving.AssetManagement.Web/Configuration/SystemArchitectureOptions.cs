@@ -6,7 +6,7 @@ public sealed class SystemArchitectureOptions
 
     public string EvolutionFrameworkPackage { get; set; } = "DevelApp.SelfEvolvingFramework";
 
-    public string EvolutionFrameworkVersion { get; set; } = "1.2.0";
+    public string EvolutionFrameworkVersion { get; set; } = "1.3.0";
 
     public string DatabaseProvider { get; set; } = "PostgreSQL";
 
@@ -21,6 +21,8 @@ public sealed class SystemArchitectureOptions
     public double EvolutionMinimumFitnessScore { get; set; } = 0.8;
 
     public bool MultiAgentEnabled { get; set; }
+
+    public string MultiAgentSystemMode { get; set; } = "Cloud";
 
     public int MultiAgentMaxParallelAgents { get; set; } = 6;
 

@@ -85,7 +85,7 @@ Overall completion toward the target architecture is now **100%**, with all targ
 | Asset ownership assignment API | Implemented with EF Core persistence | Unit + integration-tested |
 | PostgreSQL persistence and EF Core migrations | Implemented with runtime relational persistence wiring (PostgreSQL primary, SQLite fallback for local/test execution) | Unit + integration-tested |
 | Feedback ingestion and telemetry pipeline | Implemented with persisted feedback ingestion + persisted telemetry capture | Unit + integration-tested |
-| `DevelApp.SelfEvolvingFramework` runtime orchestration | Implemented with 1.2.0 multi-agent governance baseline + persisted candidates/fitness/telemetry + agent-run audit trails | Unit + integration-tested |
+| `DevelApp.SelfEvolvingFramework` runtime orchestration | Implemented with 1.3.0 multi-agent governance baseline + persisted candidates/fitness/telemetry + agent-run audit trails + local showcase mode | Unit + integration-tested |
 | Rollout governance and approval workflow | Implemented with persisted approvals, lifecycle events, staged rollout controls, and minimum fitness gates | Unit + integration-tested |
 
 ### OPA Guidance (Implemented)
@@ -97,9 +97,9 @@ Overall completion toward the target architecture is now **100%**, with all targ
 - Policy decision audit events are now persisted and queryable through API (`GET /api/policy/decisions`) with policy version/source metadata for governance traceability.
 - Integration and unit tests validate policy outcomes and audit persistence paths.
 
-### Framework implementation details (v1.2.0 capability coverage)
+### Framework implementation details (v1.3.0 capability coverage)
 
-The v1.2.0-targeted capability set is fully implemented and verified in runtime APIs, persistence, and architecture configuration.
+The v1.3.0-targeted capability set is fully implemented and verified in runtime APIs, persistence, and architecture configuration.
 
 | Capability | Implemented behavior in this solution |
 |---|---|
@@ -110,4 +110,4 @@ The v1.2.0-targeted capability set is fully implemented and verified in runtime 
 | OPA policy evaluation support | OPA-style allow/deny decisions for asset creation are captured, persisted, and queryable through policy decision audit APIs. |
 | Externalized policy bundle execution | Asset-create policy constraints are loaded from a versioned bundle file and applied through the policy evaluation service. |
 | Expanded orchestration extensions | Candidate generation supports coordinated multi-agent synthesis with safety, fitness, rollout, and human-gate adapter decisions plus deterministic timeout fallback. |
-| Framework version governance | Architecture configuration and blueprint output enforce and publish the framework governance baseline (`DevelApp.SelfEvolvingFramework` `1.2.0`) for GitOps-auditable version alignment. |
+| Framework version governance | Architecture configuration and blueprint output enforce and publish the framework governance baseline (`DevelApp.SelfEvolvingFramework` `1.3.0`) for GitOps-auditable version alignment. |
