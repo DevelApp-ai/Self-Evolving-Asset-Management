@@ -52,7 +52,7 @@ public class EvolutionCandidateEndpointsTests : IClassFixture<WebApplicationFact
     [Fact]
     public async Task GenerateFromFeedback_WhenAlreadyGenerated_ReturnsConflict()
     {
-        using var client = _factory.CreateClient();
+        using var client = CreateMultiAgentDisabledClient();
         var feedbackResponse = await client.PostAsJsonAsync("/api/feedback", new
         {
             source = "UI",
@@ -194,7 +194,7 @@ public class EvolutionCandidateEndpointsTests : IClassFixture<WebApplicationFact
     [Fact]
     public async Task GenerateFromFeedbackMultiAgent_WhenDisabled_ReturnsConflict()
     {
-        using var client = _factory.CreateClient();
+        using var client = CreateMultiAgentDisabledClient();
         var feedbackResponse = await client.PostAsJsonAsync("/api/feedback", new
         {
             source = "Ops",
@@ -262,6 +262,24 @@ public class EvolutionCandidateEndpointsTests : IClassFixture<WebApplicationFact
                     ["SystemArchitecture:MultiAgentEnabled"] = "true",
                     ["SystemArchitecture:EvolutionFrameworkVersion"] = "1.3.0",
                     ["SystemArchitecture:MultiAgentSystemMode"] = "Local"
+                });
+            });
+        });
+
+        return factory.CreateClient();
+    }
+
+    private HttpClient CreateMultiAgentDisabledClient()
+    {
+        var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configBuilder) =>
+            {
+                configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["SystemArchitecture:MultiAgentEnabled"] = "false",
+                    ["SystemArchitecture:EvolutionFrameworkVersion"] = "1.3.0",
+                    ["SystemArchitecture:MultiAgentSystemMode"] = "Cloud"
                 });
             });
         });

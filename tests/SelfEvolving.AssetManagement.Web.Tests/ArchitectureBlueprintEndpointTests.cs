@@ -30,10 +30,10 @@ public class ArchitectureBlueprintEndpointTests : IClassFixture<WebApplicationFa
         Assert.True(blueprint.BlazorWebAssemblyEnabled);
         Assert.True(blueprint.BlazorServerEnabled);
         Assert.True(blueprint.HasDatabaseConnectionString);
-        Assert.False(blueprint.MultiAgentEnabled);
-        Assert.Equal("Cloud", blueprint.MultiAgentSystemMode);
-        Assert.Equal(6, blueprint.MultiAgentMaxParallelAgents);
-        Assert.Equal(5000, blueprint.MultiAgentRunTimeoutMs);
+        Assert.True(blueprint.MultiAgentEnabled);
+        Assert.Equal("Local", blueprint.MultiAgentSystemMode);
+        Assert.Equal(3, blueprint.MultiAgentMaxParallelAgents);
+        Assert.Equal(8000, blueprint.MultiAgentRunTimeoutMs);
         Assert.Equal(0.6, blueprint.MultiAgentSafetyBlockThreshold);
         Assert.True(blueprint.MultiAgentRequireHumanApproval);
     }
