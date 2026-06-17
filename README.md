@@ -6,7 +6,8 @@ This repository now includes an initial implementation of the technical design i
 
 - C# Blazor Web App hybrid (Server + WebAssembly)
 - PostgreSQL-focused architecture configuration
-- NuGet integration reference for `DevelApp.SelfEvolvingFramework`
+- NuGet integration reference for `DevelApp.SelfEvolvingFramework` `1.3.0`
+- Development profile enables local multi-agent orchestration for showcase scenarios
 - API endpoint: `GET /api/system/blueprint`
 
 ## Build and test

@@ -25,14 +25,15 @@ public class ArchitectureBlueprintEndpointTests : IClassFixture<WebApplicationFa
 
         Assert.NotNull(blueprint);
         Assert.Equal("DevelApp.SelfEvolvingFramework", blueprint!.EvolutionFrameworkPackage);
-        Assert.Equal("1.2.0", blueprint.EvolutionFrameworkVersion);
+        Assert.Equal("1.3.0", blueprint.EvolutionFrameworkVersion);
         Assert.Equal("PostgreSQL", blueprint.DatabaseProvider);
         Assert.True(blueprint.BlazorWebAssemblyEnabled);
         Assert.True(blueprint.BlazorServerEnabled);
         Assert.True(blueprint.HasDatabaseConnectionString);
-        Assert.False(blueprint.MultiAgentEnabled);
-        Assert.Equal(6, blueprint.MultiAgentMaxParallelAgents);
-        Assert.Equal(5000, blueprint.MultiAgentRunTimeoutMs);
+        Assert.True(blueprint.MultiAgentEnabled);
+        Assert.Equal("Local", blueprint.MultiAgentSystemMode);
+        Assert.Equal(3, blueprint.MultiAgentMaxParallelAgents);
+        Assert.Equal(8000, blueprint.MultiAgentRunTimeoutMs);
         Assert.Equal(0.6, blueprint.MultiAgentSafetyBlockThreshold);
         Assert.True(blueprint.MultiAgentRequireHumanApproval);
     }
@@ -45,6 +46,7 @@ public class ArchitectureBlueprintEndpointTests : IClassFixture<WebApplicationFa
         bool BlazorServerEnabled,
         bool HasDatabaseConnectionString,
         bool MultiAgentEnabled,
+        string MultiAgentSystemMode,
         int MultiAgentMaxParallelAgents,
         int MultiAgentRunTimeoutMs,
         double MultiAgentSafetyBlockThreshold,

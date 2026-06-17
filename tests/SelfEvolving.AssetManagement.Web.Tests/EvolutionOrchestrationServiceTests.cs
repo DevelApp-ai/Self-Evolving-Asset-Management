@@ -73,6 +73,19 @@ public class EvolutionOrchestrationServiceTests
     }
 
     [Fact]
+    public void Constructor_WhenMultiAgentSystemModeIsInvalid_ThrowsArgumentException()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            MultiAgentSystemMode = "Edge"
+        });
+
+        var action = () => new EvolutionOrchestrationService(options);
+
+        Assert.Throws<ArgumentException>(action);
+    }
+
+    [Fact]
     public void CreateFromFeedback_GeneratesProposedCandidate()
     {
         var service = new EvolutionOrchestrationService();
@@ -92,14 +105,15 @@ public class EvolutionOrchestrationServiceTests
         var options = Options.Create(new SystemArchitectureOptions
         {
             MultiAgentEnabled = true,
-            EvolutionFrameworkVersion = "1.2.0"
+            EvolutionFrameworkVersion = "1.3.0"
         });
         var service = new EvolutionOrchestrationService(options);
         var feedback = new FeedbackRecord(201, "UX", "Search", "Improve search relevance and discoverability", DateTime.UtcNow);
 
         var candidate = service.CreateFromFeedback(feedback);
 
-        Assert.Contains("[multi-agent:v1.2", candidate.Summary);
+        Assert.Contains("[multi-agent:v1.3", candidate.Summary);
+        Assert.Contains("mode:cloud", candidate.Summary);
         var runs = service.GetAgentRunsByCandidateId(candidate.Id);
         Assert.Single(runs);
         Assert.Equal("Completed", runs[0].Status);
@@ -107,6 +121,27 @@ public class EvolutionOrchestrationServiceTests
         Assert.True(steps.Count >= 5);
         var decisions = service.GetAgentRunDecisions(runs[0].Id);
         Assert.True(decisions.Count >= 3);
+    }
+
+    [Fact]
+    public void CreateFromFeedback_WhenLocalMultiAgentModeEnabled_UsesLocalRuntimeMetadata()
+    {
+        var options = Options.Create(new SystemArchitectureOptions
+        {
+            MultiAgentEnabled = true,
+            MultiAgentSystemMode = "Local",
+            EvolutionFrameworkVersion = "1.3.0"
+        });
+        var service = new EvolutionOrchestrationService(options);
+        var feedback = new FeedbackRecord(204, "UX", "Search", "Tune ranking for local showcase", DateTime.UtcNow);
+
+        var candidate = service.CreateFromFeedback(feedback);
+
+        Assert.Contains("mode:local", candidate.Summary);
+        var runs = service.GetAgentRunsByCandidateId(candidate.Id);
+        Assert.Single(runs);
+        var steps = service.GetAgentRunSteps(runs[0].Id);
+        Assert.Contains(steps, step => step.AgentType == "CoordinatorAgent" && step.OutputSummary.Contains("local runtime", StringComparison.Ordinal));
     }
 
     [Fact]

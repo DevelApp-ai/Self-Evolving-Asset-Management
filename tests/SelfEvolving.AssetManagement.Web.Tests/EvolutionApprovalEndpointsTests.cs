@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 
 namespace SelfEvolving.AssetManagement.Web.Tests;
 
@@ -105,7 +106,7 @@ public class EvolutionApprovalEndpointsTests : IClassFixture<WebApplicationFacto
     [Fact]
     public async Task ApproveCandidate_WhenFitnessMissing_ReturnsConflict()
     {
-        using var client = _factory.CreateClient();
+        using var client = CreateMultiAgentDisabledClient();
         var candidate = await CreateCandidateAsync(client);
 
         var response = await client.PostAsJsonAsync($"/api/evolution/candidates/{candidate.Id}/approvals", new
@@ -180,6 +181,24 @@ public class EvolutionApprovalEndpointsTests : IClassFixture<WebApplicationFacto
         var candidate = await candidateResponse.Content.ReadFromJsonAsync<CandidateResponse>();
         Assert.NotNull(candidate);
         return candidate!;
+    }
+
+    private HttpClient CreateMultiAgentDisabledClient()
+    {
+        var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configBuilder) =>
+            {
+                configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["SystemArchitecture:MultiAgentEnabled"] = "false",
+                    ["SystemArchitecture:EvolutionFrameworkVersion"] = "1.3.0",
+                    ["SystemArchitecture:MultiAgentSystemMode"] = "Cloud"
+                });
+            });
+        });
+
+        return factory.CreateClient();
     }
 
     private sealed record FeedbackResponse(
